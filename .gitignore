@@ -10,3 +10,10 @@ Icon?
 # Spotlight and Trash
 .Spotlight-V100
 .Trashes
+
+# generated artifacts
+/generated/
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
