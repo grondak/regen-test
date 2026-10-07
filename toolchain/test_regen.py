@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from toolchain.regen import generate_app
+from toolchain.regen import discover_prompt_files, generate_app
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -12,7 +12,10 @@ PROMPT = ROOT / "prompts" / "hello-world.md"
 
 
 class RegenTests(unittest.TestCase):
-    def test_generate_hello_world(self):
+    def test_prompt_discovery_and_generation(self):
+        prompt_files = discover_prompt_files(ROOT / "prompts")
+        self.assertIn(PROMPT, prompt_files)
+
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir) / "generated" / "hello-world"
             generated = generate_app(PROMPT, output_dir)

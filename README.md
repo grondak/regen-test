@@ -1,30 +1,38 @@
 # regen-test
 
-This repository stores the prompts, not the generated implementation code.
+This repository stores prompt definitions rather than generated implementation code.
 
 The workflow is intentionally simple:
-- keep the prompt specification in version control
-- regenerate the implementation on demand
-- validate the generated result with tests that are part of the prompt contract
+- keep the app requirement in a prompt
+- keep the implementation details in a matching `*-implementation.md` prompt file
+- regenerate code on demand from those prompt definitions
+- validate the generated app with tests
 
-## Current prompt
+## Prompt discovery
 
-The first prompt is `prompts/hello-world.md`.
+The generator scans the `prompts/` directory and finds prompt files automatically. Each app prompt has a matching implementation prompt, e.g.:
 
-It describes a tiny Python app that prints `Hello, World!` and includes a corresponding test.
+- `prompts/hello-world.md`
+- `prompts/hello-world-implementation.md`
 
 ## Toolchain
 
-Generate the app from the prompt:
+Generate the app from a discovered prompt:
 
 ```bash
 python3 toolchain/regen.py prompts/hello-world.md --output generated/hello-world
 ```
 
-Run the generated test suite:
+Or let the generator discover prompts and then choose one explicitly:
 
 ```bash
-python3 -m pytest generated/hello-world/test_app.py -q
+python3 toolchain/regen.py --prompt-dir prompts
+```
+
+Then run the generated test suite:
+
+```bash
+python3 -m unittest discover -s generated/hello-world -p 'test_app.py' -q
 ```
 
 Generated output is intentionally not committed to source control.

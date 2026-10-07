@@ -6,73 +6,84 @@ import re
 from pathlib import Path
 
 
-def hello_world_generation(prompt_path: Path) -> tuple[str, str, str]:
-    app_code = '''def main():
-    print("Hello, World!")
+PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
 
-if __name__ == "__main__":
-    main()
-'''
-
-    test_code = '''import contextlib
-import io
-import unittest
-
-import app
+def discover_prompt_files(prompt_dir: Path | None = None) -> list[Path]:
+    root = prompt_dir or PROMPT_DIR
+    return sorted(
+        path for path in root.iterdir()
+        if path.is_file() and path.suffix.lower() == ".md" and not path.name.endswith("-implementation.md")
+    )
 
 
-class AppTests(unittest.TestCase):
-    def test_main_prints_hello_world(self):
-        with contextlib.redirect_stdout(io.StringIO()) as stdout:
-            app.main()
-        self.assertEqual(stdout.getvalue(), "Hello, World!\\n")
-'''
-
-    readme = f'''# Generated app from prompt
-
-Prompt: {prompt_path.name}
-
-This app was generated from a prompt and reproduces a minimal Hello, World implementation.
-'''
-
-    return app_code, test_code, readme
+def find_implementation_prompt(prompt_path: Path) -> Path:
+    implementation_path = prompt_path.with_name(f"{prompt_path.stem}-implementation.md")
+    if not implementation_path.exists():
+        raise FileNotFoundError(f"No implementation prompt found for {prompt_path.name}")
+    return implementation_path
 
 
-def detect_prompt_kind(prompt_text: str, prompt_path: Path) -> str:
-    normalized = re.sub(r"[^a-z0-9]+", "-", (prompt_path.stem + " " + prompt_text).lower()).strip("-")
-    if "hello-world" in normalized or "hello world" in normalized:
-        return "hello-world"
-    raise ValueError(f"Unsupported prompt type: {prompt_path}")
+def parse_implementation_prompt(implementation_path: Path) -> dict[str, str]:
+    text = implementation_path.read_text(encoding="utf-8")
+    matches = re.findall(r"^##\s+(.+?)\n```(?:\w+)?\n(.*?)\n```", text, re.MULTILINE | re.DOTALL)
+
+    if not matches:
+        raise ValueError(f"Implementation prompt {implementation_path.name} does not contain file sections.")
+
+    files: dict[str, str] = {}
+    for file_name, contents in matches:
+        files[file_name.strip()] = contents.strip() + "\n"
+    return files
 
 
 def generate_app(prompt_path: Path, output_dir: Path) -> Path:
-    prompt_text = prompt_path.read_text(encoding="utf-8")
-    kind = detect_prompt_kind(prompt_text, prompt_path)
-
-    if kind == "hello-world":
-        app_code, test_code, readme = hello_world_generation(prompt_path)
-    else:
-        raise ValueError(f"No generator configured for: {kind}")
+    implementation_prompt = find_implementation_prompt(prompt_path)
+    generated_files = parse_implementation_prompt(implementation_prompt)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / "app.py").write_text(app_code, encoding="utf-8")
-    (output_dir / "test_app.py").write_text(test_code, encoding="utf-8")
-    (output_dir / "README.md").write_text(readme, encoding="utf-8")
+    for relative_name, contents in generated_files.items():
+        target = output_dir / relative_name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(contents, encoding="utf-8")
+
+    summary = f"# Generated app from {prompt_path.stem}\n\nPrompt: {prompt_path.name}\n\nThis output was generated from the matching implementation prompt and is not kept in source control.\n"
+    (output_dir / "README.md").write_text(summary, encoding="utf-8")
     return output_dir
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate code from a stored prompt.")
-    parser.add_argument("prompt", type=Path, help="Path to the prompt markdown file.")
+    parser = argparse.ArgumentParser(description="Discover and generate code from prompt files.")
+    parser.add_argument("prompt", type=Path, nargs="?", help="Optional prompt file to generate from.")
+    parser.add_argument("--prompt-dir", type=Path, default=PROMPT_DIR, help="Directory containing prompt files.")
     parser.add_argument("--output", type=Path, default=Path("generated"), help="Directory to write generated files to.")
     args = parser.parse_args()
 
-    if not args.prompt.exists():
-        raise FileNotFoundError(f"Prompt not found: {args.prompt}")
+    prompt_dir = args.prompt_dir
+    if not prompt_dir.exists():
+        raise FileNotFoundError(f"Prompt directory not found: {prompt_dir}")
 
-    target = generate_app(args.prompt, args.output)
-    print(f"Generated app into: {target}")
+    discovered = discover_prompt_files(prompt_dir)
+    if not discovered:
+        raise FileNotFoundError(f"No prompt files found in {prompt_dir}")
+
+    selected_prompt = args.prompt
+    if selected_prompt is None:
+        if len(discovered) == 1:
+            selected_prompt = discovered[0]
+        else:
+            names = ", ".join(p.name for p in discovered)
+            raise SystemExit(f"Multiple prompts found: {names}. Choose one explicitly.")
+
+    if not selected_prompt.exists():
+        selected_prompt = prompt_dir / selected_prompt.name if not selected_prompt.is_absolute() else selected_prompt
+
+    if not selected_prompt.exists():
+        raise FileNotFoundError(f"Prompt not found: {selected_prompt}")
+
+    target = generate_app(selected_prompt, args.output)
+    print(f"Generated app from {selected_prompt.name} into {target}")
+    print(f"Available prompts: {', '.join(p.name for p in discovered)}")
 
 
 if __name__ == "__main__":
