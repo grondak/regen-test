@@ -48,6 +48,12 @@ Or let the generator discover prompts and then choose one explicitly:
 python3 toolchain/regen.py --prompt-dir prompts
 ```
 
+Run the generated app to see the output manually:
+
+```bash
+python3 generated/hello-world/app.py
+```
+
 Then run the generated test suite:
 
 ```bash
