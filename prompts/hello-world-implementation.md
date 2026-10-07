@@ -10,6 +10,11 @@ if __name__ == "__main__":
     main()
 ```
 
+## requirements.txt
+```text
+# Generated requirements for the Python app
+```
+
 ## test_app.py
 ```python
 import contextlib

@@ -7,6 +7,7 @@ The workflow is intentionally simple:
 - keep the implementation details in a matching `*-implementation.md` prompt file
 - regenerate code on demand from those prompt definitions
 - validate the generated app with tests
+- include a language-appropriate runtime manifest in the generated output
 
 ## Prompt discovery
 
@@ -14,6 +15,14 @@ The generator scans the `prompts/` directory and finds prompt files automaticall
 
 - `prompts/hello-world.md`
 - `prompts/hello-world-implementation.md`
+
+## Runtime manifests
+
+The generator adds a manifest for the runtime automatically:
+- Python outputs receive a `requirements.txt`
+- Node outputs receive a `package.json`
+
+This keeps the generated project buildable even when the prompt code itself is only stored as text in the repo.
 
 ## Toolchain
 
