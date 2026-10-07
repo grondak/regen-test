@@ -25,15 +25,33 @@ def find_implementation_prompt(prompt_path: Path) -> Path:
     return implementation_path
 
 
+def render_template(template: str, variables: dict[str, str]) -> str:
+    rendered = template
+    for key, value in variables.items():
+        rendered = rendered.replace(f"${{{key}}}", value)
+    return rendered
+
+
 def parse_implementation_prompt(implementation_path: Path) -> dict[str, str]:
     text = implementation_path.read_text(encoding="utf-8")
-    matches = re.findall(r"^##\s+(.+?)\n```(?:\w+)?\n(.*?)\n```", text, re.MULTILINE | re.DOTALL)
 
-    if not matches:
-        raise ValueError(f"Implementation prompt {implementation_path.name} does not contain file sections.")
+    contract_match = re.search(r"^##\s*contract\s*\n```(?:json)?\n(.*?)\n```", text, re.MULTILINE | re.DOTALL)
+    if contract_match:
+        contract = json.loads(contract_match.group(1))
+        files = {}
+        for item in contract.get("files", []):
+            path = item["path"]
+            template = item["body_template"]
+            variables = item.get("variables", {})
+            files[path] = render_template(template, variables)
+        return files
+
+    legacy_matches = re.findall(r"^##\s+(.+?)\n```(?:\w+)?\n(.*?)\n```", text, re.MULTILINE | re.DOTALL)
+    if not legacy_matches:
+        raise ValueError(f"Implementation prompt {implementation_path.name} does not contain a contract or file sections.")
 
     files: dict[str, str] = {}
-    for file_name, contents in matches:
+    for file_name, contents in legacy_matches:
         files[file_name.strip()] = contents.strip() + "\n"
     return files
 

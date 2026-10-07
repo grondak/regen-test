@@ -4,7 +4,7 @@ This repository stores prompt definitions rather than generated implementation c
 
 The workflow is intentionally simple:
 - keep the app requirement in a prompt
-- keep the implementation details in a matching `*-implementation.md` prompt file
+- keep the implementation details in a matching `*-implementation.md` prompt file as a structured generation contract
 - regenerate code on demand from those prompt definitions
 - validate the generated app with tests
 - include a language-appropriate runtime manifest in the generated output
@@ -15,6 +15,16 @@ The generator scans the `prompts/` directory and finds prompt files automaticall
 
 - `prompts/hello-world.md`
 - `prompts/hello-world-implementation.md`
+
+## Declarative implementation prompts
+
+The first implementation prompt is intentionally no longer a literal source-code dump. Instead, it is a JSON contract that describes:
+- the runtime
+- the file list
+- the template for each file
+- the variable substitutions used to assemble the final source text
+
+This makes the repo behave more like a prompt-driven generator than a template repository.
 
 ## Runtime manifests
 
