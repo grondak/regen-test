@@ -75,6 +75,56 @@ def add_runtime_manifest(generated_files: dict[str, str]) -> None:
         ) + "\n"
 
 
+def find_runtime_entrypoint(project_dir: Path) -> Path | None:
+    for preferred_name in ("app.py", "main.py", "index.js", "server.js"):
+        candidate = project_dir / preferred_name
+        if candidate.exists():
+            return candidate
+
+    python_candidates = sorted(
+        p for p in project_dir.glob("*.py") if not p.name.startswith("test_") and not p.name.endswith("_test.py")
+    )
+    if python_candidates:
+        return python_candidates[0]
+
+    js_candidates = sorted(p for p in project_dir.glob("*.js") if not p.name.startswith("test_"))
+    if js_candidates:
+        return js_candidates[0]
+
+    return None
+
+
+def build_manual_run_command(base_dir: Path = Path("generated")) -> str:
+    command = (
+        "python3 - <<'PY'\n"
+        "from pathlib import Path\n"
+        "import subprocess\n"
+        "import sys\n\n"
+        f"root = Path({str(base_dir)!r})\n"
+        "candidates = sorted([p for p in root.iterdir() if p.is_dir()], key=lambda p: p.stat().st_mtime, reverse=True)\n"
+        "for project_dir in candidates:\n"
+        "    entrypoint = None\n"
+        "    for preferred in ('app.py', 'main.py', 'index.js', 'server.js'):\n"
+        "        candidate = project_dir / preferred\n"
+        "        if candidate.exists():\n"
+        "            entrypoint = candidate\n"
+        "            break\n"
+        "    if entrypoint is None:\n"
+        "        py_files = sorted([p for p in project_dir.glob('*.py') if not p.name.startswith('test_') and not p.name.endswith('_test.py')])\n"
+        "        if py_files:\n"
+        "            entrypoint = py_files[0]\n"
+        "        else:\n"
+        "            js_files = sorted([p for p in project_dir.glob('*.js') if not p.name.startswith('test_')])\n"
+        "            if js_files:\n"
+        "                entrypoint = js_files[0]\n"
+        "    if entrypoint is not None:\n"
+        "        raise SystemExit(subprocess.call([sys.executable, str(entrypoint)]))\n"
+        "raise SystemExit('No generated app found under ' + str(root))\n"
+        "PY"
+    )
+    return command
+
+
 def generate_app(prompt_path: Path, output_dir: Path) -> Path:
     implementation_prompt = find_implementation_prompt(prompt_path)
     generated_files = parse_implementation_prompt(implementation_prompt)
@@ -86,7 +136,11 @@ def generate_app(prompt_path: Path, output_dir: Path) -> Path:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(contents, encoding="utf-8")
 
-    summary = f"# Generated app from {prompt_path.stem}\n\nPrompt: {prompt_path.name}\n\nThis output was generated from the matching implementation prompt and is not kept in source control.\n"
+    summary = (
+        f"# Generated app from {prompt_path.stem}\n\n"
+        f"Prompt: {prompt_path.name}\n\n"
+        "This output was generated from the matching implementation prompt and is not kept in source control.\n"
+    )
     (output_dir / "README.md").write_text(summary, encoding="utf-8")
     return output_dir
 
