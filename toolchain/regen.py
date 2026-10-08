@@ -145,11 +145,24 @@ def generate_app(prompt_path: Path, output_dir: Path) -> Path:
     return output_dir
 
 
+def generate_all_apps(prompt_dir: Path | None = None, output_root: Path = Path("generated")) -> list[Path]:
+    root = prompt_dir or PROMPT_DIR
+    discovered = discover_prompt_files(root)
+    generated_dirs: list[Path] = []
+
+    for prompt_path in discovered:
+        stage_dir = output_root / prompt_path.stem
+        generated_dirs.append(generate_app(prompt_path, stage_dir))
+
+    return generated_dirs
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Discover and generate code from prompt files.")
     parser.add_argument("prompt", type=Path, nargs="?", help="Optional prompt file to generate from.")
     parser.add_argument("--prompt-dir", type=Path, default=PROMPT_DIR, help="Directory containing prompt files.")
     parser.add_argument("--output", type=Path, default=Path("generated"), help="Directory to write generated files to.")
+    parser.add_argument("--all", action="store_true", help="Generate every prompt file in the prompt directory as a stage.")
     args = parser.parse_args()
 
     prompt_dir = args.prompt_dir
@@ -159,6 +172,12 @@ def main() -> None:
     discovered = discover_prompt_files(prompt_dir)
     if not discovered:
         raise FileNotFoundError(f"No prompt files found in {prompt_dir}")
+
+    if args.all:
+        generated = generate_all_apps(prompt_dir, args.output)
+        print(f"Generated {len(generated)} stages under {args.output}")
+        print(f"Available prompts: {', '.join(p.name for p in discovered)}")
+        return
 
     selected_prompt = args.prompt
     if selected_prompt is None:
