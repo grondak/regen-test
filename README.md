@@ -16,6 +16,25 @@ The generator scans the `prompts/` directory and finds prompt files automaticall
 - `prompts/hello-world.md`
 - `prompts/hello-world-implementation.md`
 
+## Stage catalog
+
+The repo includes a staged teaching progression, with each stage stored as its own prompt file:
+
+- `prompts/01-foundation.md`
+- `prompts/02-json-file-store.md`
+- `prompts/03-linux-database.md`
+- `prompts/04-rds.md`
+- `prompts/05-sync-request.md`
+- `prompts/06-queue.md`
+- `prompts/07-event-driven.md`
+- `prompts/08-lambda.md`
+
+Generate the entire staged set with:
+
+```bash
+python3 toolchain/regen.py --prompt-dir prompts --output generated --all
+```
+
 ## Declarative implementation prompts
 
 The first implementation prompt is intentionally no longer a literal source-code dump. Instead, it is a JSON contract that describes:
