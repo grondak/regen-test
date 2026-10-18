@@ -1,0 +1,247 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TinyWMS consolidated AWS deployment lesson
+Parameters:
+  DatabaseName:
+    Type: String
+    Default: tinywms
+  DatabaseUsername:
+    Type: String
+    Default: tinywms
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    Description: RDS master password. Provide at deploy time; never commit it.
+  VpcSecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: Security groups that allow the Lambda to reach PostgreSQL on 5432.
+  DbSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnets for the DB subnet group (at least two Availability Zones).
+  EventBusName:
+    Type: String
+    Default: tinywms-order-events
+  LambdaCodeS3Bucket:
+    Type: String
+  LambdaCodeS3Key:
+    Type: String
+Resources:
+  DeploymentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /tinywms/lesson
+      RetentionInDays: 7
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: tinywms-inventory-targeted-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt PickWorkQueue.Arn
+              - Effect: Allow
+                Action:
+                  - events:PutEvents
+                Resource: !GetAtt OrderEventsBus.Arn
+  InventoryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: tinywms-cloud-inventory
+      Runtime: python3.11
+      Handler: lambda_inventory.handler
+      Role: !GetAtt LambdaRole.Arn
+      Timeout: 10
+      Environment:
+        Variables:
+          DATABASE_URL: !Sub postgresql://${DatabaseUsername}:${DatabasePassword}@${TinywmsDatabase.Endpoint.Address}:${TinywmsDatabase.Endpoint.Port}/${DatabaseName}
+          PICK_WORK_QUEUE_URL: !Ref PickWorkQueue
+          EVENT_BUS_NAME: !Ref OrderEventsBus
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+  InventoryApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: tinywms-cloud-api
+  InventoryResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref InventoryApi
+      ParentId: !GetAtt InventoryApi.RootResourceId
+      PathPart: inventory
+  OrdersResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref InventoryApi
+      ParentId: !GetAtt InventoryApi.RootResourceId
+      PathPart: orders
+  GetInventoryMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref InventoryApi
+      ResourceId: !Ref InventoryResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${InventoryFunction.Arn}/invocations
+  PostOrdersMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref InventoryApi
+      ResourceId: !Ref OrdersResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${InventoryFunction.Arn}/invocations
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - GetInventoryMethod
+      - PostOrdersMethod
+    Properties:
+      RestApiId: !Ref InventoryApi
+      StageName: prod
+  ApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref InventoryFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${InventoryApi}/*/*/*
+  PickWorkQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: tinywms-pick-work
+  OrderEventsBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Ref EventBusName
+  TinywmsDbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: TinyWMS database subnet group
+      SubnetIds: !Ref DbSubnetIds
+  TinywmsDatabase:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    Properties:
+      DBInstanceIdentifier: tinywms-cloud-db
+      DBName: !Ref DatabaseName
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 20
+      Engine: postgres
+      EngineVersion: '16.3'
+      MasterUsername: !Ref DatabaseUsername
+      MasterUserPassword: !Ref DatabasePassword
+      BackupRetentionPeriod: 1
+      DeletionProtection: false
+      StorageEncrypted: true
+      VPCSecurityGroups: !Ref VpcSecurityGroupIds
+      DBSubnetGroupName: !Ref TinywmsDbSubnetGroup
+      MultiAZ: false
+      Port: 5432
+  EventConsumerAQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: tinywms-event-consumer-a
+  OrderPlacedToARule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: tinywms-order-placed-to-consumer-a
+      EventBusName: !Ref OrderEventsBus
+      EventPattern:
+        source:
+          - tinywms.orders
+        detail-type:
+          - OrderPlaced
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt EventConsumerAQueue.Arn
+          Id: EventConsumerATarget
+  EventConsumerAQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref EventConsumerAQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt EventConsumerAQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt OrderPlacedToARule.Arn
+  EventConsumerBQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: tinywms-event-consumer-b
+  OrderPlacedToBRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: tinywms-order-placed-to-consumer-b
+      EventBusName: !Ref OrderEventsBus
+      EventPattern:
+        source:
+          - tinywms.orders
+        detail-type:
+          - OrderPlaced
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt EventConsumerBQueue.Arn
+          Id: EventConsumerBTarget
+  EventConsumerBQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref EventConsumerBQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt EventConsumerBQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt OrderPlacedToBRule.Arn
+Outputs:
+  ApiBaseUrl:
+    Value: !Sub https://${InventoryApi}.execute-api.${AWS::Region}.amazonaws.com/prod
+  FunctionName:
+    Value: !Ref InventoryFunction
+  QueueUrl:
+    Value: !Ref PickWorkQueue
+  QueueArn:
+    Value: !GetAtt PickWorkQueue.Arn
+  EventBusName:
+    Value: !Ref OrderEventsBus
+  EventBusArn:
+    Value: !GetAtt OrderEventsBus.Arn
+  EventConsumerAQueueUrl:
+    Value: !Ref EventConsumerAQueue
+  EventConsumerBQueueUrl:
+    Value: !Ref EventConsumerBQueue
+  DbEndpointAddress:
+    Value: !GetAtt TinywmsDatabase.Endpoint.Address
+  DbEndpointPort:
+    Value: !GetAtt TinywmsDatabase.Endpoint.Port

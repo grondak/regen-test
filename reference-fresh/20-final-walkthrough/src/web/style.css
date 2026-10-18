@@ -1,0 +1,43 @@
+body {
+  font-family: sans-serif;
+  margin: 2rem;
+}
+
+code,
+textarea,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+th,
+td {
+  border: 1px solid #999;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.toolbar {
+  margin: 1rem 0;
+}
+
+textarea {
+  width: 100%;
+  max-width: 50rem;
+}
+
+#error {
+  color: #b00020;
+  white-space: pre-wrap;
+}
+
+#response-json {
+  white-space: pre-wrap;
+  background: #f7f7f7;
+  padding: 1rem;
+}

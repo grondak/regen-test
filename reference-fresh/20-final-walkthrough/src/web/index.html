@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>TinyWMS Inventory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>TinyWMS inventory and orders</h1>
+  <p>API base: <code id="api-base"></code></p>
+  <p id="status">Loading inventory...</p>
+  <div class="toolbar">
+    <button id="refresh-button" type="button">Refresh inventory</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Description</th>
+        <th>Bin</th>
+        <th>Quantity</th>
+        <th>Unit</th>
+      </tr>
+    </thead>
+    <tbody id="inventory-body"></tbody>
+  </table>
+  <section>
+    <h2>Visible order JSON</h2>
+    <form id="order-form">
+      <textarea id="order-json" rows="8" cols="60"></textarea>
+      <div class="toolbar">
+        <button type="submit">Submit order</button>
+      </div>
+    </form>
+    <p id="submit-status"></p>
+    <h2>Server response JSON</h2>
+    <pre id="response-json"></pre>
+  </section>
+  <pre id="error"></pre>
+  <script src="app.js"></script>
+</body>
+</html>

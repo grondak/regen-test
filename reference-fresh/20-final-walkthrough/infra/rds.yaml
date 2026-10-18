@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TinyWMS RDS lesson.
+
+Parameters:
+  DatabaseName:
+    Type: String
+    Default: tinywms
+    Description: Logical database name for the TinyWMS relational schema.
+  DatabaseUsername:
+    Type: String
+    Default: tinywms
+    Description: Master username for the RDS instance.
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    Description: Master password for the RDS instance. Provide at deploy time.
+  VpcSecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: Security groups allowed to connect to the database.
+  DbSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnet IDs for the DB subnet group.
+  AllocatedStorageGiB:
+    Type: Number
+    Default: 20
+    Description: Small lesson-scale storage size.
+  DbInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    Description: Low-cost instance class for the lesson.
+Resources:
+  TinywmsDbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: TinyWMS database subnet group
+      SubnetIds: !Ref DbSubnetIds
+
+  TinywmsDbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: TinyWMS database security group
+      SecurityGroupIngress: []
+      SecurityGroupEgress: []
+
+  TinywmsDatabase:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: tinywms-relational-lesson
+      DBName: !Ref DatabaseName
+      DBInstanceClass: !Ref DbInstanceClass
+      AllocatedStorage: !Ref AllocatedStorageGiB
+      Engine: postgres
+      EngineVersion: '16.3'
+      MasterUsername: !Ref DatabaseUsername
+      MasterUserPassword: !Ref DatabasePassword
+      PubliclyAccessible: true
+      BackupRetentionPeriod: 1
+      DeletionProtection: false
+      StorageEncrypted: true
+      VPCSecurityGroups: !Ref VpcSecurityGroupIds
+      DBSubnetGroupName: !Ref TinywmsDbSubnetGroup
+      MultiAZ: false
+      AutoMinorVersionUpgrade: true
+      CopyTagsToSnapshot: true
+      MonitoringInterval: 0
+      Port: 5432
+Outputs:
+  DbEndpointAddress:
+    Description: RDS endpoint hostname.
+    Value: !GetAtt TinywmsDatabase.Endpoint.Address
+  DbEndpointPort:
+    Description: RDS endpoint port.
+    Value: !GetAtt TinywmsDatabase.Endpoint.Port
+  DbSubnetGroupName:
+    Description: DB subnet group name used by the instance.
+    Value: !Ref TinywmsDbSubnetGroup
+  DatabaseSecurityGroupId:
+    Description: Security group identifier created for the database lesson.
+    Value: !Ref TinywmsDbSecurityGroup

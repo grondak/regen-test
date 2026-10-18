@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TinyWMS Lambda inventory lesson with RDS inputs.
+
+Parameters:
+  DatabaseEndpoint:
+    Type: String
+    Description: RDS endpoint host used by the Lambda function.
+  DatabasePort:
+    Type: Number
+    Default: 5432
+    Description: RDS endpoint port used by the Lambda function.
+  DatabaseName:
+    Type: String
+    Default: tinywms
+    Description: Database name that holds the inventory table.
+  DatabaseUser:
+    Type: String
+    Default: tinywms
+    Description: Database user for the Lambda connection.
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    Description: Database password for the Lambda connection.
+
+Resources:
+  LambdaInventoryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: tinywms-lambda-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  LambdaInventoryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: tinywms-inventory-lesson
+      Runtime: python3.11
+      Handler: lambda_inventory.handler
+      Role: !GetAtt LambdaInventoryRole.Arn
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          TINYWMS_DB_HOST: !Ref DatabaseEndpoint
+          TINYWMS_DB_PORT: !Ref DatabasePort
+          TINYWMS_DB_NAME: !Ref DatabaseName
+          TINYWMS_DB_USER: !Ref DatabaseUser
+          TINYWMS_DB_PASSWORD: !Ref DatabasePassword
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {'statusCode': 200, 'headers': {'Content-Type': 'application/json'}, 'body': '[]'}
+
+Outputs:
+  FunctionName:
+    Description: Lambda function name.
+    Value: !Ref LambdaInventoryFunction
+  FunctionArn:
+    Description: Lambda function ARN.
+    Value: !GetAtt LambdaInventoryFunction.Arn

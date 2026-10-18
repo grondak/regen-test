@@ -1,0 +1,56 @@
+# macOS metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Editors and local workspaces
+.idea/
+.vscode/
+*.code-workspace
+*~
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Local credentials and configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Runtime and test output
+*.log
+*.sqlite
+*.sqlite3
+*.db
+pick-tickets.txt
+container-output/
+
+# Packaging and deployment output
+build/
+dist/
+*.zip
+.aws-sam/
+.cdk.out/
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Generator-only metadata is not part of the published course repository
+.regen.json

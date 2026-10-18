@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TinyWMS API Gateway lesson.
+Parameters:
+  LambdaFunctionName:
+    Type: String
+    Description: Name of the existing TinyWMS Lambda inventory function.
+Resources:
+  InventoryApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: tinywms-inventory-api
+
+  InventoryResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref InventoryApi
+      ParentId: !GetAtt InventoryApi.RootResourceId
+      PathPart: inventory
+
+  GetInventoryMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref InventoryApi
+      ResourceId: !Ref InventoryResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunctionName}/invocations
+
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - GetInventoryMethod
+    Properties:
+      RestApiId: !Ref InventoryApi
+      StageName: prod
+
+  PermissionForApiGateway:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LambdaFunctionName
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${InventoryApi}/*/GET/inventory
+
+Outputs:
+  ApiBaseUrl:
+    Description: Base URL for the deployed API stage.
+    Value: !Sub https://${InventoryApi}.execute-api.${AWS::Region}.amazonaws.com/prod
+  ApiId:
+    Description: API Gateway identifier.
+    Value: !Ref InventoryApi

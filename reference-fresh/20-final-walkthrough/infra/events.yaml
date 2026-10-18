@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TinyWMS EventBridge fan-out lesson.
+
+Parameters:
+  EventBusName:
+    Type: String
+    Default: tinywms-order-events
+    Description: Event bus name used for the OrderPlaced fact events.
+
+Resources:
+  OrderEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Ref EventBusName
+
+  EventConsumerAQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: tinywms-event-consumer-a
+
+  EventConsumerBQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: tinywms-event-consumer-b
+
+  ConsumerARule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: tinywms-order-placed-consumer-a
+      EventBusName: !Ref OrderEventBus
+      EventPattern:
+        source:
+          - tinywms.orders
+        detail-type:
+          - OrderPlaced
+        detail:
+          version:
+            - 1
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt EventConsumerAQueue.Arn
+          Id: EventConsumerAQueueTarget
+
+  ConsumerBRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: tinywms-order-placed-consumer-b
+      EventBusName: !Ref OrderEventBus
+      EventPattern:
+        source:
+          - tinywms.orders
+        detail-type:
+          - OrderPlaced
+        detail:
+          version:
+            - 1
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt EventConsumerBQueue.Arn
+          Id: EventConsumerBQueueTarget
+
+  EventConsumerAQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref EventConsumerAQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgeToSendToConsumerA
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt EventConsumerAQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt ConsumerARule.Arn
+
+  EventConsumerBQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref EventConsumerBQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgeToSendToConsumerB
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt EventConsumerBQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt ConsumerBRule.Arn
+
+Outputs:
+  EventBusName:
+    Description: Event bus name for the OrderPlaced event path.
+    Value: !Ref OrderEventBus
+  EventBusArn:
+    Description: Event bus ARN for the OrderPlaced event path.
+    Value: !GetAtt OrderEventBus.Arn
+  EventConsumerAQueueUrl:
+    Description: Queue URL for consumer A.
+    Value: !Ref EventConsumerAQueue
+  EventConsumerAQueueArn:
+    Description: Queue ARN for consumer A.
+    Value: !GetAtt EventConsumerAQueue.Arn
+  EventConsumerBQueueUrl:
+    Description: Queue URL for consumer B.
+    Value: !Ref EventConsumerBQueue
+  EventConsumerBQueueArn:
+    Description: Queue ARN for consumer B.
+    Value: !GetAtt EventConsumerBQueue.Arn
+  ConsumerARuleArn:
+    Description: EventBridge rule ARN for consumer A.
+    Value: !GetAtt ConsumerARule.Arn
+  ConsumerBRuleArn:
+    Description: EventBridge rule ARN for consumer B.
+    Value: !GetAtt ConsumerBRule.Arn

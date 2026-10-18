@@ -1,0 +1,17 @@
+[Unit]
+Description=TinyWMS pick-ticket worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%E/tinywms-pick-ticket-worker.env
+WorkingDirectory=@REPO_ROOT@
+ExecStart=/usr/bin/env python3 -m src.pick_ticket_worker ${TINYWMS_QUEUE_URL} ${TINYWMS_TICKET_FILE} --state-file ${TINYWMS_STATE_FILE} --wait-time-seconds ${TINYWMS_WAIT_TIME_SECONDS} --max-number-of-messages ${TINYWMS_MAX_NUMBER_OF_MESSAGES}
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

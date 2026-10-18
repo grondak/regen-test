@@ -1,0 +1,1488 @@
+{
+  "schema_version": 1,
+  "reference_stage": "20-final-walkthrough",
+  "contracts": [
+    {
+      "id": "inventory-json",
+      "name": "inventory JSON",
+      "introduced_stage": "01-json-backbone",
+      "representation": "visible JSON",
+      "schema_paths": [
+        "data/inventory.schema.json"
+      ],
+      "producer_components": [
+        "inventory-file"
+      ],
+      "consumer_components": [
+        "inventory-cli",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "lambda-inventory-handler"
+      ],
+      "compatibility_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "id": "order-json",
+      "name": "order JSON",
+      "introduced_stage": "11-orders",
+      "representation": "visible JSON",
+      "schema_paths": [
+        "data/orders.schema.json"
+      ],
+      "producer_components": [
+        "browser-order-page",
+        "http-inventory-order-server",
+        "lambda-order-handler"
+      ],
+      "consumer_components": [
+        "http-inventory-order-server",
+        "lambda-order-handler"
+      ],
+      "compatibility_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "id": "pick-work-command",
+      "name": "pick-work command",
+      "introduced_stage": "13-sqs",
+      "representation": "queue",
+      "schema_paths": [
+        "data/pick-work.json"
+      ],
+      "producer_components": [
+        "lambda-order-handler"
+      ],
+      "consumer_components": [
+        "sqs-consumer",
+        "pick-ticket-worker",
+        "containerized-pick-ticket-worker"
+      ],
+      "compatibility_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "id": "order-placed-event",
+      "name": "OrderPlaced event",
+      "introduced_stage": "14-domain-events",
+      "representation": "event",
+      "schema_paths": [
+        "docs/data-contracts.md"
+      ],
+      "producer_components": [
+        "lambda-order-handler"
+      ],
+      "consumer_components": [
+        "event-consumer-a",
+        "event-consumer-b"
+      ],
+      "compatibility_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "id": "pick-ticket-output",
+      "name": "pick-ticket output",
+      "introduced_stage": "15-pick-ticket-worker",
+      "representation": "visible file output",
+      "schema_paths": [
+        "docs/data-contracts.md",
+        "docs/end-to-end.md"
+      ],
+      "producer_components": [
+        "pick-ticket-worker",
+        "containerized-pick-ticket-worker"
+      ],
+      "consumer_components": [
+        "callback-integration-test",
+        "end-to-end-walkthrough"
+      ],
+      "compatibility_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    }
+  ],
+  "components": [
+    {
+      "id": "inventory-file",
+      "name": "inventory JSON file",
+      "introduced_stage": "01-json-backbone",
+      "retired_after_stage": null,
+      "kind": "contract",
+      "runtime": "filesystem",
+      "paths": [
+        "data/inventory.json"
+      ],
+      "inbound_contracts": [],
+      "outbound_contracts": [
+        "inventory-json"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "inventory-cli",
+      "name": "inventory CLI",
+      "introduced_stage": "01-json-backbone",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "python3 process on Linux",
+      "paths": [
+        "src/inventory_cli.py"
+      ],
+      "inbound_contracts": [
+        "inventory-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json"
+      ],
+      "dependencies": [
+        "inventory-file",
+        "inventory-json"
+      ]
+    },
+    {
+      "id": "linux-visible-demo",
+      "name": "Linux-visible demo tools",
+      "introduced_stage": "02-linux-visible",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "python3 process on Linux",
+      "paths": [
+        "src/linux_visible.py",
+        "src/inventory_watcher.py"
+      ],
+      "inbound_contracts": [
+        "inventory-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json"
+      ],
+      "dependencies": [
+        "inventory-file",
+        "inventory-json"
+      ]
+    },
+    {
+      "id": "http-inventory-server",
+      "name": "HTTP inventory server",
+      "introduced_stage": "03-pi-http-server",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "python3 process on Raspberry Pi Linux or EC2 Linux",
+      "paths": [
+        "src/http_server.py"
+      ],
+      "inbound_contracts": [
+        "inventory-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json"
+      ],
+      "dependencies": [
+        "inventory-file",
+        "inventory-json"
+      ]
+    },
+    {
+      "id": "browser-inventory-page",
+      "name": "browser inventory page",
+      "introduced_stage": "04-browser",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "browser",
+      "paths": [
+        "src/web/index.html",
+        "src/web/app.js",
+        "src/web/style.css"
+      ],
+      "inbound_contracts": [
+        "inventory-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json"
+      ],
+      "dependencies": [
+        "http-inventory-server",
+        "inventory-json"
+      ]
+    },
+    {
+      "id": "ec2-deployment-wrapper",
+      "name": "EC2 deployment wrapper",
+      "introduced_stage": "05-ec2-deployment",
+      "retired_after_stage": null,
+      "kind": "operations",
+      "runtime": "EC2 Linux host",
+      "paths": [
+        "deploy/ec2/README.md",
+        "deploy/ec2/environment.example",
+        "deploy/ec2/run_inventory_server.sh"
+      ],
+      "inbound_contracts": [
+        "inventory-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json"
+      ],
+      "dependencies": [
+        "http-inventory-server"
+      ]
+    },
+    {
+      "id": "lambda-inventory-handler",
+      "name": "Lambda inventory handler",
+      "introduced_stage": "06-lambda",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "AWS Lambda",
+      "paths": [
+        "src/lambda_inventory.py"
+      ],
+      "inbound_contracts": [
+        "inventory-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json"
+      ],
+      "dependencies": [
+        "inventory-json",
+        "inventory-file"
+      ]
+    },
+    {
+      "id": "api-gateway-front-door",
+      "name": "API Gateway front door",
+      "introduced_stage": "07-api-gateway",
+      "retired_after_stage": null,
+      "kind": "infrastructure",
+      "runtime": "AWS API Gateway",
+      "paths": [
+        "infra/api-gateway.yaml",
+        "deploy/api-gateway/README.md"
+      ],
+      "inbound_contracts": [
+        "inventory-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json"
+      ],
+      "dependencies": [
+        "lambda-inventory-handler",
+        "inventory-json"
+      ]
+    },
+    {
+      "id": "relational-schema",
+      "name": "relational persistence schema",
+      "introduced_stage": "08-relational-persistence",
+      "retired_after_stage": null,
+      "kind": "contract",
+      "runtime": "SQL files and database process",
+      "paths": [
+        "data/schema.sql",
+        "data/seed.sql",
+        "src/sql_export.py"
+      ],
+      "inbound_contracts": [
+        "inventory-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json"
+      ],
+      "dependencies": [
+        "inventory-json"
+      ]
+    },
+    {
+      "id": "rds-wrapper",
+      "name": "RDS deployment wrapper",
+      "introduced_stage": "09-rds",
+      "retired_after_stage": null,
+      "kind": "operations",
+      "runtime": "AWS RDS",
+      "paths": [
+        "infra/rds.yaml",
+        "deploy/rds/README.md"
+      ],
+      "inbound_contracts": [
+        "inventory-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json"
+      ],
+      "dependencies": [
+        "relational-schema"
+      ]
+    },
+    {
+      "id": "lambda-rds-inventory-handler",
+      "name": "Lambda database-backed inventory handler",
+      "introduced_stage": "10-lambda-rds",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "AWS Lambda",
+      "paths": [
+        "src/lambda_inventory.py"
+      ],
+      "inbound_contracts": [
+        "inventory-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json"
+      ],
+      "dependencies": [
+        "lambda-inventory-handler",
+        "rds-wrapper",
+        "inventory-json"
+      ]
+    },
+    {
+      "id": "http-inventory-order-server",
+      "name": "local HTTP inventory/order server",
+      "introduced_stage": "11-orders",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "python3 process on Linux",
+      "paths": [
+        "src/http_server.py"
+      ],
+      "inbound_contracts": [
+        "inventory-json",
+        "order-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json",
+        "order-json"
+      ],
+      "dependencies": [
+        "http-inventory-server",
+        "inventory-json",
+        "order-json"
+      ]
+    },
+    {
+      "id": "browser-order-page",
+      "name": "integrated inventory and order browser page",
+      "introduced_stage": "11-orders",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "browser",
+      "paths": [
+        "src/web/app.js",
+        "src/web/index.html",
+        "src/web/style.css"
+      ],
+      "inbound_contracts": [
+        "inventory-json",
+        "order-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json",
+        "order-json"
+      ],
+      "dependencies": [
+        "browser-inventory-page",
+        "http-inventory-order-server",
+        "order-json"
+      ]
+    },
+    {
+      "id": "lambda-order-handler",
+      "name": "Lambda order handler",
+      "introduced_stage": "11-orders",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "AWS Lambda",
+      "paths": [
+        "src/lambda_inventory.py"
+      ],
+      "inbound_contracts": [
+        "inventory-json",
+        "order-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json",
+        "pick-work-command",
+        "order-placed-event"
+      ],
+      "dependencies": [
+        "lambda-rds-inventory-handler",
+        "relational-schema",
+        "pick-work-command",
+        "order-placed-event"
+      ]
+    },
+    {
+      "id": "order-concurrency-guard",
+      "name": "concurrent order hardening",
+      "introduced_stage": "12-concurrency",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "database transaction boundary",
+      "paths": [
+        "src/lambda_inventory.py",
+        "tests/test_concurrency.py"
+      ],
+      "inbound_contracts": [
+        "order-json"
+      ],
+      "outbound_contracts": [
+        "inventory-json",
+        "order-json"
+      ],
+      "dependencies": [
+        "lambda-order-handler",
+        "relational-schema",
+        "order-json"
+      ]
+    },
+    {
+      "id": "sqs-consumer",
+      "name": "SQS consumer",
+      "introduced_stage": "13-sqs",
+      "retired_after_stage": "15-pick-ticket-worker",
+      "kind": "application",
+      "runtime": "python3 process on Linux",
+      "paths": [
+        "src/sqs_consumer.py"
+      ],
+      "inbound_contracts": [
+        "pick-work-command"
+      ],
+      "outbound_contracts": [
+        "pick-work-command"
+      ],
+      "dependencies": [
+        "pick-work-command"
+      ]
+    },
+    {
+      "id": "pick-work-queue",
+      "name": "pick-work SQS queue",
+      "introduced_stage": "13-sqs",
+      "retired_after_stage": null,
+      "kind": "infrastructure",
+      "runtime": "AWS SQS",
+      "paths": [
+        "infra/sqs.yaml",
+        "deploy/sqs/README.md"
+      ],
+      "inbound_contracts": [
+        "pick-work-command"
+      ],
+      "outbound_contracts": [
+        "pick-work-command"
+      ],
+      "dependencies": [
+        "lambda-order-handler",
+        "pick-work-command"
+      ]
+    },
+    {
+      "id": "event-consumer-a",
+      "name": "Event consumer A",
+      "introduced_stage": "14-domain-events",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "python3 process on Linux",
+      "paths": [
+        "src/event_consumer_a.py"
+      ],
+      "inbound_contracts": [
+        "order-placed-event"
+      ],
+      "outbound_contracts": [
+        "order-placed-event"
+      ],
+      "dependencies": [
+        "order-placed-event"
+      ]
+    },
+    {
+      "id": "event-consumer-b",
+      "name": "Event consumer B",
+      "introduced_stage": "14-domain-events",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "python3 process on Linux",
+      "paths": [
+        "src/event_consumer_b.py"
+      ],
+      "inbound_contracts": [
+        "order-placed-event"
+      ],
+      "outbound_contracts": [
+        "order-placed-event"
+      ],
+      "dependencies": [
+        "order-placed-event"
+      ]
+    },
+    {
+      "id": "eventbridge-order-bus",
+      "name": "EventBridge order bus and rules",
+      "introduced_stage": "14-domain-events",
+      "retired_after_stage": null,
+      "kind": "infrastructure",
+      "runtime": "AWS EventBridge",
+      "paths": [
+        "infra/events.yaml",
+        "deploy/events/README.md"
+      ],
+      "inbound_contracts": [
+        "order-placed-event"
+      ],
+      "outbound_contracts": [
+        "order-placed-event"
+      ],
+      "dependencies": [
+        "lambda-order-handler",
+        "order-placed-event"
+      ]
+    },
+    {
+      "id": "pick-ticket-worker",
+      "name": "pick-ticket worker",
+      "introduced_stage": "15-pick-ticket-worker",
+      "retired_after_stage": null,
+      "kind": "application",
+      "runtime": "python3 process on Linux",
+      "paths": [
+        "src/pick_ticket_worker.py"
+      ],
+      "inbound_contracts": [
+        "pick-work-command"
+      ],
+      "outbound_contracts": [
+        "pick-ticket-output"
+      ],
+      "dependencies": [
+        "pick-work-command",
+        "pick-ticket-output"
+      ]
+    },
+    {
+      "id": "callback-integration-test",
+      "name": "callback integration proof",
+      "introduced_stage": "16-callback-demo",
+      "retired_after_stage": null,
+      "kind": "operations",
+      "runtime": "local test suite",
+      "paths": [
+        "tests/test_callback_integration.py",
+        "docs/end-to-end.md"
+      ],
+      "inbound_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event",
+        "pick-ticket-output"
+      ],
+      "outbound_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event",
+        "pick-ticket-output"
+      ],
+      "dependencies": [
+        "http-inventory-order-server",
+        "lambda-order-handler",
+        "pick-ticket-worker",
+        "eventbridge-order-bus",
+        "pick-ticket-output"
+      ]
+    },
+    {
+      "id": "containerized-pick-ticket-worker",
+      "name": "containerized pick-ticket worker",
+      "introduced_stage": "17-container-worker",
+      "retired_after_stage": null,
+      "kind": "infrastructure",
+      "runtime": "Docker container",
+      "paths": [
+        "src/Dockerfile"
+      ],
+      "inbound_contracts": [
+        "pick-work-command"
+      ],
+      "outbound_contracts": [
+        "pick-ticket-output"
+      ],
+      "dependencies": [
+        "pick-ticket-worker",
+        "pick-work-command",
+        "pick-ticket-output"
+      ]
+    },
+    {
+      "id": "consolidated-aws-deployment",
+      "name": "consolidated AWS deployment",
+      "introduced_stage": "18-aws-deployment",
+      "retired_after_stage": null,
+      "kind": "infrastructure",
+      "runtime": "AWS CloudFormation stack",
+      "paths": [
+        "infra/template.yaml",
+        "deploy/aws/README.md",
+        "tests/test_deployment_wiring.py"
+      ],
+      "inbound_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event"
+      ],
+      "outbound_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event"
+      ],
+      "dependencies": [
+        "lambda-order-handler",
+        "pick-work-queue",
+        "eventbridge-order-bus",
+        "rds-wrapper"
+      ]
+    },
+    {
+      "id": "git-history-milestones",
+      "name": "Git history milestones",
+      "introduced_stage": "19-git-history",
+      "retired_after_stage": null,
+      "kind": "operations",
+      "runtime": "git tags and checkouts",
+      "paths": [
+        "README.md",
+        "docs/architecture.md"
+      ],
+      "inbound_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event",
+        "pick-ticket-output"
+      ],
+      "outbound_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event",
+        "pick-ticket-output"
+      ],
+      "dependencies": [
+        "consolidated-aws-deployment",
+        "callback-integration-test"
+      ]
+    },
+    {
+      "id": "end-to-end-walkthrough",
+      "name": "final end-to-end walkthrough",
+      "introduced_stage": "20-final-walkthrough",
+      "retired_after_stage": null,
+      "kind": "operations",
+      "runtime": "documentation and local test suite",
+      "paths": [
+        "docs/end-to-end.md",
+        "tests/test_end_to_end_walkthrough.py",
+        "tests/test_http_order_flow.py"
+      ],
+      "inbound_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event",
+        "pick-ticket-output"
+      ],
+      "outbound_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event",
+        "pick-ticket-output"
+      ],
+      "dependencies": [
+        "git-history-milestones",
+        "callback-integration-test",
+        "consolidated-aws-deployment"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "name": "00-establish-repository",
+      "purpose": "Establish the TinyWMS repository scaffold and teaching docs.",
+      "added_components": [],
+      "reused_components": [],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [],
+      "boundary_shift": "Repository scaffold only; no runnable application yet.",
+      "required_paths": [
+        "README.md",
+        "docs/architecture.md",
+        "docs/data-contracts.md",
+        "data/.gitkeep",
+        "src/.gitkeep",
+        "tests/.gitkeep"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "01-json-backbone",
+      "purpose": "Define the initial JSON inventory contract and CLI backbone.",
+      "added_components": [
+        "inventory-file",
+        "inventory-cli"
+      ],
+      "reused_components": [],
+      "evolved_components": [],
+      "introduced_contracts": [
+        "inventory-json"
+      ],
+      "inherited_contracts": [],
+      "boundary_shift": "JSON file and CLI process boundary become visible.",
+      "required_paths": [
+        "data/inventory.json",
+        "data/inventory.schema.json",
+        "src/inventory_cli.py"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "02-linux-visible",
+      "purpose": "Make Linux process behavior visible through small CLI tools.",
+      "added_components": [
+        "linux-visible-demo"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json"
+      ],
+      "boundary_shift": "stdin/stdout/stderr, exit codes, environment variables, and long-running process behavior become explicit.",
+      "required_paths": [
+        "src/linux_visible.py",
+        "src/inventory_watcher.py"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "03-pi-http-server",
+      "purpose": "Expose the inventory JSON over HTTP on a Raspberry Pi or EC2 host.",
+      "added_components": [
+        "http-inventory-server"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json"
+      ],
+      "boundary_shift": "HTTP request/response boundary is added.",
+      "required_paths": [
+        "src/http_server.py"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "04-browser",
+      "purpose": "Use browser JavaScript to fetch and render the inventory contract.",
+      "added_components": [
+        "browser-inventory-page"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json"
+      ],
+      "boundary_shift": "Browser DOM becomes a new consumer of the same JSON contract.",
+      "required_paths": [
+        "src/web/index.html",
+        "src/web/app.js",
+        "src/web/style.css"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "05-ec2-deployment",
+      "purpose": "Show how to run the HTTP server on EC2 Linux.",
+      "added_components": [
+        "ec2-deployment-wrapper"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json"
+      ],
+      "boundary_shift": "Hosting and process-startup responsibility moves to EC2 deployment steps.",
+      "required_paths": [
+        "deploy/ec2/README.md",
+        "deploy/ec2/environment.example",
+        "deploy/ec2/run_inventory_server.sh"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "06-lambda",
+      "purpose": "Add Lambda inventory handling in parallel with the Linux server path.",
+      "added_components": [
+        "lambda-inventory-handler"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json"
+      ],
+      "boundary_shift": "AWS Lambda becomes a new compute option for the same inventory contract.",
+      "required_paths": [
+        "src/lambda_inventory.py",
+        "deploy/lambda/README.md"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "07-api-gateway",
+      "purpose": "Place API Gateway in front of the Lambda inventory path.",
+      "added_components": [
+        "api-gateway-front-door"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "lambda-inventory-handler"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json"
+      ],
+      "boundary_shift": "HTTP front door shifts from direct server to API Gateway.",
+      "required_paths": [
+        "infra/api-gateway.yaml",
+        "deploy/api-gateway/README.md",
+        "tests/test_web_app.js"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "08-relational-persistence",
+      "purpose": "Map the JSON inventory model into relational SQL structures.",
+      "added_components": [
+        "relational-schema"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "lambda-inventory-handler",
+        "api-gateway-front-door"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json"
+      ],
+      "boundary_shift": "Data model expands from JSON file to SQL schema and export files.",
+      "required_paths": [
+        "data/schema.sql",
+        "data/seed.sql",
+        "src/sql_export.py",
+        "data/init_db.py",
+        "src/db_adapter.py"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "09-rds",
+      "purpose": "Move the relational database hosting lesson to managed RDS.",
+      "added_components": [
+        "rds-wrapper"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "lambda-inventory-handler",
+        "api-gateway-front-door",
+        "relational-schema"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json"
+      ],
+      "boundary_shift": "Database hosting and operations move to AWS RDS.",
+      "required_paths": [
+        "infra/rds.yaml",
+        "deploy/rds/README.md"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "10-lambda-rds",
+      "purpose": "Read inventory from RDS inside Lambda while preserving the inventory contract.",
+      "added_components": [
+        "lambda-rds-inventory-handler"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "api-gateway-front-door",
+        "relational-schema",
+        "rds-wrapper"
+      ],
+      "evolved_components": [
+        "lambda-inventory-handler"
+      ],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json"
+      ],
+      "boundary_shift": "Lambda reads PostgreSQL rows instead of static JSON in the deployed path.",
+      "required_paths": [
+        "src/lambda_inventory.py"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "11-orders",
+      "purpose": "Add transactional order placement and an integrated browser workflow.",
+      "added_components": [
+        "http-inventory-order-server",
+        "browser-order-page",
+        "lambda-order-handler"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "ec2-deployment-wrapper",
+        "api-gateway-front-door",
+        "relational-schema",
+        "rds-wrapper",
+        "lambda-rds-inventory-handler"
+      ],
+      "evolved_components": [
+        "http-inventory-server",
+        "browser-inventory-page",
+        "lambda-inventory-handler"
+      ],
+      "introduced_contracts": [
+        "order-json"
+      ],
+      "inherited_contracts": [
+        "inventory-json"
+      ],
+      "boundary_shift": "The system gains a write path with order validation and database transaction boundaries.",
+      "required_paths": [
+        "src/order_form.html",
+        "src/lambda_inventory.py",
+        "data/orders.schema.json",
+        "tests/test_http_order_flow.py",
+        "tests/test_sqlite_orders.py"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "12-concurrency",
+      "purpose": "Demonstrate and fix overselling under concurrent order attempts.",
+      "added_components": [
+        "order-concurrency-guard"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "lambda-inventory-handler",
+        "api-gateway-front-door",
+        "relational-schema",
+        "rds-wrapper",
+        "lambda-rds-inventory-handler",
+        "http-inventory-order-server",
+        "browser-order-page"
+      ],
+      "evolved_components": [
+        "lambda-order-handler"
+      ],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json",
+        "order-json"
+      ],
+      "boundary_shift": "Transaction strategy is hardened against overlapping requests.",
+      "required_paths": [
+        "tests/test_concurrency.py"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "13-sqs",
+      "purpose": "Publish pick-work commands after committed orders and consume them locally.",
+      "added_components": [
+        "sqs-consumer",
+        "pick-work-queue"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "lambda-inventory-handler",
+        "api-gateway-front-door",
+        "relational-schema",
+        "rds-wrapper",
+        "lambda-rds-inventory-handler",
+        "http-inventory-order-server",
+        "browser-order-page",
+        "order-concurrency-guard"
+      ],
+      "evolved_components": [
+        "lambda-order-handler"
+      ],
+      "introduced_contracts": [
+        "pick-work-command"
+      ],
+      "inherited_contracts": [
+        "inventory-json",
+        "order-json"
+      ],
+      "boundary_shift": "Asynchronous command queue is added after commit.",
+      "required_paths": [
+        "infra/sqs.yaml",
+        "deploy/sqs/README.md",
+        "src/sqs_consumer.py"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "14-domain-events",
+      "purpose": "Add a separate fact event and decoupled consumers.",
+      "added_components": [
+        "event-consumer-a",
+        "event-consumer-b",
+        "eventbridge-order-bus"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "lambda-inventory-handler",
+        "api-gateway-front-door",
+        "relational-schema",
+        "rds-wrapper",
+        "lambda-rds-inventory-handler",
+        "http-inventory-order-server",
+        "browser-order-page",
+        "order-concurrency-guard",
+        "sqs-consumer",
+        "pick-work-queue"
+      ],
+      "evolved_components": [
+        "lambda-order-handler"
+      ],
+      "introduced_contracts": [
+        "order-placed-event"
+      ],
+      "inherited_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command"
+      ],
+      "boundary_shift": "Event publication is separated from the queue command path.",
+      "required_paths": [
+        "infra/events.yaml",
+        "deploy/events/README.md",
+        "src/event_consumer_a.py",
+        "src/event_consumer_b.py"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "15-pick-ticket-worker",
+      "purpose": "Turn the queue consumer into a long-running idempotent pick-ticket worker.",
+      "added_components": [
+        "pick-ticket-worker"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "lambda-inventory-handler",
+        "api-gateway-front-door",
+        "relational-schema",
+        "rds-wrapper",
+        "lambda-rds-inventory-handler",
+        "http-inventory-order-server",
+        "browser-order-page",
+        "lambda-order-handler",
+        "order-concurrency-guard",
+        "pick-work-queue",
+        "event-consumer-a",
+        "event-consumer-b",
+        "eventbridge-order-bus"
+      ],
+      "evolved_components": [
+        "sqs-consumer"
+      ],
+      "introduced_contracts": [
+        "pick-ticket-output"
+      ],
+      "inherited_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event"
+      ],
+      "boundary_shift": "Queue consumption now produces durable file output.",
+      "required_paths": [
+        "src/pick_ticket_worker.py",
+        "tests/test_pick_ticket_worker.py",
+        "deploy/pick-ticket-worker/tinywms-pick-ticket-worker.service.in",
+        "deploy/pick-ticket-worker/install_user_service.sh",
+        "deploy/pick-ticket-worker/environment.example",
+        "deploy/pick-ticket-worker/README.md"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "16-callback-demo",
+      "purpose": "Demonstrate the full browser-to-worker callback chain with local proofs.",
+      "added_components": [
+        "callback-integration-test"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "lambda-inventory-handler",
+        "api-gateway-front-door",
+        "relational-schema",
+        "rds-wrapper",
+        "lambda-rds-inventory-handler",
+        "http-inventory-order-server",
+        "browser-order-page",
+        "lambda-order-handler",
+        "order-concurrency-guard",
+        "pick-work-queue",
+        "event-consumer-a",
+        "event-consumer-b",
+        "eventbridge-order-bus",
+        "pick-ticket-worker"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event",
+        "pick-ticket-output"
+      ],
+      "boundary_shift": "Teaching focus shifts to the entire assembled path.",
+      "required_paths": [
+        "docs/end-to-end.md",
+        "tests/test_callback_integration.py"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "17-container-worker",
+      "purpose": "Show the same worker contract running in a container.",
+      "added_components": [
+        "containerized-pick-ticket-worker"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "lambda-inventory-handler",
+        "api-gateway-front-door",
+        "relational-schema",
+        "rds-wrapper",
+        "lambda-rds-inventory-handler",
+        "http-inventory-order-server",
+        "browser-order-page",
+        "lambda-order-handler",
+        "order-concurrency-guard",
+        "pick-work-queue",
+        "event-consumer-a",
+        "event-consumer-b",
+        "eventbridge-order-bus",
+        "pick-ticket-worker",
+        "callback-integration-test"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event",
+        "pick-ticket-output"
+      ],
+      "boundary_shift": "Execution packaging changes from bare Linux process to Docker container.",
+      "required_paths": [
+        "src/Dockerfile",
+        "tests/test_container_worker.py",
+        "deploy/container-worker/README.md"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "18-aws-deployment",
+      "purpose": "Consolidate the cloud deployment into one reproducible AWS stack.",
+      "added_components": [
+        "consolidated-aws-deployment"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "lambda-inventory-handler",
+        "api-gateway-front-door",
+        "relational-schema",
+        "rds-wrapper",
+        "lambda-rds-inventory-handler",
+        "http-inventory-order-server",
+        "browser-order-page",
+        "lambda-order-handler",
+        "order-concurrency-guard",
+        "pick-work-queue",
+        "event-consumer-a",
+        "event-consumer-b",
+        "eventbridge-order-bus",
+        "pick-ticket-worker",
+        "callback-integration-test",
+        "containerized-pick-ticket-worker"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event",
+        "pick-ticket-output"
+      ],
+      "boundary_shift": "One stack now exposes the assembled cloud system and outputs.",
+      "required_paths": [
+        "infra/template.yaml",
+        "deploy/aws/README.md",
+        "tests/test_deployment_wiring.py"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "19-git-history",
+      "purpose": "Use Git tags and checkouts to reveal the semester as history.",
+      "added_components": [
+        "git-history-milestones"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "lambda-inventory-handler",
+        "api-gateway-front-door",
+        "relational-schema",
+        "rds-wrapper",
+        "lambda-rds-inventory-handler",
+        "http-inventory-order-server",
+        "browser-order-page",
+        "lambda-order-handler",
+        "order-concurrency-guard",
+        "pick-work-queue",
+        "event-consumer-a",
+        "event-consumer-b",
+        "eventbridge-order-bus",
+        "pick-ticket-worker",
+        "callback-integration-test",
+        "containerized-pick-ticket-worker",
+        "consolidated-aws-deployment"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event",
+        "pick-ticket-output"
+      ],
+      "boundary_shift": "History itself becomes part of the lesson artifact.",
+      "required_paths": [
+        "README.md",
+        "docs/architecture.md",
+        "docs/git-history.md"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    },
+    {
+      "name": "20-final-walkthrough",
+      "purpose": "Document and validate the final assembled TinyWMS walkthrough.",
+      "added_components": [
+        "end-to-end-walkthrough"
+      ],
+      "reused_components": [
+        "inventory-file",
+        "inventory-cli",
+        "linux-visible-demo",
+        "http-inventory-server",
+        "browser-inventory-page",
+        "ec2-deployment-wrapper",
+        "lambda-inventory-handler",
+        "api-gateway-front-door",
+        "relational-schema",
+        "rds-wrapper",
+        "lambda-rds-inventory-handler",
+        "http-inventory-order-server",
+        "browser-order-page",
+        "lambda-order-handler",
+        "order-concurrency-guard",
+        "pick-work-queue",
+        "event-consumer-a",
+        "event-consumer-b",
+        "eventbridge-order-bus",
+        "pick-ticket-worker",
+        "callback-integration-test",
+        "containerized-pick-ticket-worker",
+        "consolidated-aws-deployment",
+        "git-history-milestones"
+      ],
+      "evolved_components": [],
+      "introduced_contracts": [],
+      "inherited_contracts": [
+        "inventory-json",
+        "order-json",
+        "pick-work-command",
+        "order-placed-event",
+        "pick-ticket-output"
+      ],
+      "boundary_shift": "The semester ends with a full architecture narrative and final validation.",
+      "required_paths": [
+        "docs/end-to-end.md",
+        "course-blueprint.json",
+        "tests/test_end_to_end_walkthrough.py",
+        "tests/test_callback_integration.py",
+        "tests/test_deployment_wiring.py",
+        "docs/demo-runbook.md",
+        "tests/test_demo_runbook.py"
+      ],
+      "continuity_checks": [
+        "python3 -m unittest discover -s tests -v"
+      ]
+    }
+  ]
+}

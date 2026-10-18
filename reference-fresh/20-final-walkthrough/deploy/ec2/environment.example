@@ -1,0 +1,2 @@
+TINYWMS_PORT=8000
+TINYWMS_INVENTORY_FILE=data/inventory.json

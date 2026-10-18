@@ -1,0 +1,215 @@
+{
+  "current_stage": "20-final-walkthrough",
+  "notes": [
+    {
+      "boundary_change": "",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "",
+      "stage": "00-establish-repository",
+      "summary": "Establish the TinyWMS repository scaffold, teaching docs, and empty directories for later lessons. No runnable application is implemented yet."
+    },
+    {
+      "boundary_change": "TinyWMS now has its first concrete data boundary, the inventory JSON file, plus a CLI that reads and emits that contract.",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "Stage 0 repository scaffold and documentation layout remain valid.",
+      "stage": "01-json-backbone",
+      "summary": "Define TinyWMS's first visible JSON inventory contract and a small Python CLI around it. This stage adds sample inventory data, a lightweight schema, documenta\u2026"
+    },
+    {
+      "boundary_change": "TinyWMS now exposes Linux process behavior directly through stdin/stdout/stderr, exit codes, environment variables, and a long-running watcher process.",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON file and the Stage 1 CLI behavior remain valid and unchanged.",
+      "stage": "02-linux-visible",
+      "summary": "Expose Linux-visible process behavior through simple Python programs while reusing the existing JSON inventory contract and CLI unchanged."
+    },
+    {
+      "boundary_change": "TinyWMS now has an HTTP request/response boundary that serves the same inventory JSON over a TCP port controlled by the `TINYWMS_PORT` environment variable.",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON file and CLI/Linux-visible behavior remain valid and unchanged.",
+      "stage": "03-pi-http-server",
+      "summary": "Add the smallest transparent HTTP server for GET /inventory while preserving the existing inventory JSON contract and Linux-visible tools. The stage teaches re\u2026"
+    },
+    {
+      "boundary_change": "TinyWMS adds a browser DOM boundary that fetches the same inventory JSON over HTTP and renders it for a human reader.",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON file and the `GET /inventory` HTTP response remain valid and unchanged.",
+      "stage": "04-browser",
+      "summary": "Add a plain HTML/CSS/JavaScript browser page that fetches the existing `GET /inventory` HTTP contract and renders the inventory as a table. Reuse the Stage 3 H\u2026"
+    },
+    {
+      "boundary_change": "the HTTP server is now operated through an EC2 Linux deployment wrapper instead of being launched only on a local Raspberry Pi/Linux workstation.",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON file and the `GET /inventory` HTTP response remain valid and unchanged.",
+      "stage": "05-ec2-deployment",
+      "summary": "Add EC2 deployment instructions and small run scripts for the existing HTTP inventory server without changing the application contract. This stage shifts the h\u2026"
+    },
+    {
+      "boundary_change": "a new AWS Lambda compute path is added in parallel with the existing Pi/EC2 Linux HTTP path.",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON representation and `GET /inventory` response shape remain valid and unchanged.",
+      "stage": "06-lambda",
+      "summary": "Add a Lambda compute path for GET /inventory while preserving the existing Pi/EC2 HTTP path and the shared inventory JSON contract. This stage introduces AWS d\u2026"
+    },
+    {
+      "boundary_change": "API Gateway becomes the managed HTTP front door in front of the existing Lambda path, while Pi/EC2 and browser paths remain available.",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON representation and `GET /inventory` response shape remain valid and unchanged.",
+      "stage": "07-api-gateway",
+      "summary": "Add API Gateway in front of the existing Lambda inventory path while preserving the prior Pi/EC2/browser/Lambda contracts. This stage introduces a deployable A\u2026"
+    },
+    {
+      "boundary_change": "a relational schema and SQL seed/export representation are added alongside the JSON model so students can compare data shapes across file and database formats.",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON file and its field names remain the canonical visible contract used by the earlier CLI, HTTP, browser, Lambda, and API Gateway lessons.",
+      "stage": "08-relational-persistence",
+      "summary": "Map the existing inventory JSON contract into a small visible relational schema, plus a SQL export path that shows how the sample JSON becomes INSERT statement\u2026"
+    },
+    {
+      "boundary_change": "the database hosting and operations boundary moves from a self-managed Linux database process to Amazon RDS, so students can compare ordinary host management w\u2026",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON file, JSON schema, and relational schema remain the same visible teaching contract established in earlier stages.",
+      "stage": "09-rds",
+      "summary": "Move the relational database lesson from self-managed Linux to Amazon RDS without changing the logical schema or the established inventory JSON contract. Reuse\u2026"
+    },
+    {
+      "boundary_change": "Lambda no longer returns inventory from embedded or static JSON in the deployed path; it opens a visible PostgreSQL connection, executes a `SELECT` against the\u2026",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON response shape, field names, and browser expectations remain unchanged.",
+      "stage": "10-lambda-rds",
+      "summary": "Evolve the Lambda inventory handler from static JSON to a visible PostgreSQL-backed RDS read path while preserving the established inventory JSON contract and\u2026"
+    },
+    {
+      "boundary_change": "the system gains a visible order JSON contract, a synchronous inventory-decrement transaction, and an integrated browser workflow that submits `POST /orders` b\u2026",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON response shape, `bin_location` field, earlier CLI tools, and the deployment guides for EC2, Lambda, API Gateway, and RDS remain valid.",
+      "stage": "11-orders",
+      "summary": "Add transactional orders across the local HTTP server, browser, and Lambda handler while preserving the existing inventory JSON contract and earlier Linux/HTTP\u2026"
+    },
+    {
+      "boundary_change": "the database transaction boundary is hardened so overlapping order attempts cannot both commit against the same remaining stock.",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON shape, the order JSON request shape, the local HTTP `POST /orders` behavior, the Lambda order API, and the existing deployment guides remain\u2026",
+      "stage": "12-concurrency",
+      "summary": "Harden the Stage 11 synchronous order transaction against overlapping requests by making the database transaction boundary visible and adding a reproducible ra\u2026"
+    },
+    {
+      "boundary_change": "the order path now has a post-commit asynchronous queue boundary, and a consumer helper demonstrates visible SQS receive/delete semantics.",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON shape, the order JSON request shape, and the Stage 12 transaction hardening remain valid and unchanged.",
+      "stage": "13-sqs",
+      "summary": "Publish pick-work commands to SQS after committed orders and add a small local SQS consumer, while preserving the Stage 12 inventory/order contracts and concur\u2026"
+    },
+    {
+      "boundary_change": "after commit, the order path now publishes both a pick-work command to SQS and an OrderPlaced fact to EventBridge.",
+      "compacted": true,
+      "components_added": "",
+      "inherited_contract": "the inventory JSON shape, the order JSON request shape, and the pick-work command contract remain valid and unchanged.",
+      "stage": "14-domain-events",
+      "summary": "Add a distinct OrderPlaced event path after the committed order transaction while preserving the existing SQS pick-work command path. Introduce two EventBridge\u2026"
+    },
+    {
+      "boundary_change": "the queue consumer is now a long-running worker that turns decoded pick-work JSON into durable file output while preserving queue acknowledgement semantics.",
+      "components": {
+        "added": "`src/pick_ticket_worker.py`, `tests/test_pick_ticket_worker.py`, and `docs/end-to-end.md`.",
+        "replaced_or_evolved": "`src/sqs_consumer.py` remains the shared receive/delete boundary, but `src/pick_ticket_worker.py` now owns the long-running loop, durable idempotency file, and human-readable ticket output",
+        "reused_unchanged": "`src/sqs_consumer.py`, `data/pick-work.json`, `tests/test_sqs_consumer.py`, `data/inventory.json`, `data/inventory.schema.json`, `data/orders.schema.json`, `data/schema.sql`, `data/seed.sql`, `src/inventory_cli.py`, `src/linux_visible.py`, `src/inventory_watcher.py`, `src/http_server.py`, `src/web/index.html`, `src/web/app.js`, `src/web/style.css`, `src/lambda_inventory.py`, `src/event_consumer_a.py`, `src/event_consumer_b.py`, `infra/api-gateway.yaml`, `infra/rds.yaml`, `infra/sqs.yaml`, `infra/events.yaml`, `deploy/ec2/README.md`, `deploy/ec2/environment.example`, `deploy/ec2/run_inventory_server.sh`, `deploy/lambda/README.md`, `deploy/rds/README.md`, `deploy/api-gateway/README.md`, `deploy/sqs/README.md`, `deploy/events/README.md`"
+      },
+      "continuity_checks": [
+        "README file-map paths must exist in the stage snapshot.",
+        "Inherited contracts remain stable unless this stage prompt explicitly changes them."
+      ],
+      "inherited_contract": "the inventory JSON, order JSON, pick-work command JSON, and OrderPlaced event contracts remain valid and unchanged.",
+      "stage": "15-pick-ticket-worker",
+      "summary": "Evolve the Stage 14 queue consumer into a long-running, idempotent pick-ticket worker that appends durable human-readable tickets to a file after successful queue processing. Preserve the existing inventory, order, command, and event contracts while reusing the Stage 13 SQS consumer boundary and adding bounded test mode, signal-aware shutdown, and restart-safe duplicate suppression."
+    },
+    {
+      "boundary_change": "the lesson now emphasizes the complete callback chain across browser, HTTP, Lambda, queue, worker, and filesystem boundaries with an executable local proof.",
+      "components": {
+        "added": "`tests/test_callback_integration.py` and the expanded `docs/end-to-end.md` walkthrough for the callback chain.",
+        "replaced_or_evolved": "the lesson focus shifts from separate component proofs to one local end-to-end integration proof that exercises the real HTTP server, Lambda order logic, queue publish shape, and worker file output together.",
+        "reused_unchanged": "`src/http_server.py`, `src/lambda_inventory.py`, `src/pick_ticket_worker.py`, `src/sqs_consumer.py`, `src/web/index.html`, `src/web/app.js`, `data/inventory.json`, `data/pick-work.json`, `tests/test_http_order_flow.py`, `tests/test_lambda_inventory.py`, `tests/test_pick_ticket_worker.py`, `docs/data-contracts.md`."
+      },
+      "continuity_checks": [
+        "README file-map paths must exist in the stage snapshot.",
+        "Inherited contracts remain stable unless this stage prompt explicitly changes them."
+      ],
+      "inherited_contract": "the inventory JSON, order JSON, pick-work command JSON, OrderPlaced event JSON, and pick-ticket file output contracts remain valid and unchanged.",
+      "stage": "16-callback-demo",
+      "summary": "Add the instructor-facing end-to-end callback demo and an executable local integration proof that exercises the real HTTP server, Lambda order path, SQS command emission, and pick-ticket worker with faked AWS boundaries while keeping mutable state isolated in temporary files."
+    },
+    {
+      "boundary_change": "the pick-ticket worker can now run either as a bare Linux process or as a Docker container, but it still processes the same decoded queue command JSON.",
+      "components": {
+        "added": "`src/Dockerfile` and `tests/test_container_worker.py` as the container runtime lesson artifacts.",
+        "replaced_or_evolved": "the worker execution environment changes from a plain Linux process to a Docker container, while the worker contract and file output remain compatible.",
+        "reused_unchanged": "`src/pick_ticket_worker.py`, `src/sqs_consumer.py`, `tests/test_pick_ticket_worker.py`, `tests/test_sqs_consumer.py`, and the earlier JSON/order/event contracts documented in `docs/data-contracts.md`."
+      },
+      "continuity_checks": [
+        "README file-map paths must exist in the stage snapshot.",
+        "Inherited contracts remain stable unless this stage prompt explicitly changes them."
+      ],
+      "inherited_contract": "the pick-work command JSON, OrderPlaced event JSON, pick-ticket output format, and queue receive/delete behavior remain unchanged.",
+      "stage": "17-container-worker",
+      "summary": "Containerize the existing pick-ticket worker without changing its contract. Reuse the Stage 16 worker, queue consumer, callback integration proof, and earlier JSON/order/event contracts unchanged; add a simple Docker image entrypoint that runs the long-lived worker by default, plus a bounded --once example for classroom use. Update architecture and README so students can see container packaging as an alternate runtime for the same worker contract."
+    },
+    {
+      "boundary_change": "the cloud path is consolidated into one stack that packages the real Lambda source and exposes the assembled deployment outputs in one place.",
+      "components": {
+        "added": "`infra/template.yaml`, `deploy/aws/README.md`, and `tests/test_deployment_wiring.py` as the consolidated AWS deployment lesson artifacts.",
+        "replaced_or_evolved": "the earlier separate deployment wrappers are now represented as one stack that still exposes the same contracts and preserves the earlier Pi/EC2/container worker demonstrations.",
+        "reused_unchanged": "`src/lambda_inventory.py`, `src/pick_ticket_worker.py`, `src/sqs_consumer.py`, `tests/test_lambda_inventory.py`, `tests/test_sqs_consumer.py`, `tests/test_pick_ticket_worker.py`, and `tests/test_callback_integration.py`."
+      },
+      "continuity_checks": [
+        "README file-map paths must exist in the stage snapshot.",
+        "Inherited contracts remain stable unless this stage prompt explicitly changes them."
+      ],
+      "inherited_contract": "the inventory JSON, order JSON, pick-work command, OrderPlaced event, and pick-ticket output contracts remain unchanged from earlier stages.",
+      "stage": "18-aws-deployment",
+      "summary": "Consolidate TinyWMS into one deployable AWS stack with packaging, API Gateway, Lambda, SQS, EventBridge, and deployment verification while preserving all Stage 17 contracts and the supported Pi/container worker paths."
+    },
+    {
+      "boundary_change": "Git history becomes a visible teaching boundary, so milestones and checkouts are now part of the lesson itself.",
+      "components": {
+        "added": "`README.md` history-map guidance and the component-evolution timeline in `docs/architecture.md` for the git-history lesson.",
+        "replaced_or_evolved": "no application component is replaced; this stage reuses the current system and documents how earlier milestones can be viewed through tags and checkouts.",
+        "reused_unchanged": "`src/lambda_inventory.py`, `src/http_server.py`, `src/pick_ticket_worker.py`, `src/sqs_consumer.py`, `src/Dockerfile`, `src/web/index.html`, `src/web/app.js`, `src/web/style.css`, `docs/data-contracts.md`, `docs/end-to-end.md`, and the deployment guides under `deploy/`."
+      },
+      "continuity_checks": [
+        "README file-map paths must exist in the stage snapshot.",
+        "Inherited contracts remain stable unless this stage prompt explicitly changes them."
+      ],
+      "inherited_contract": "the inventory JSON, order JSON, pick-work command, OrderPlaced event, and pick-ticket output contracts remain valid and unchanged.",
+      "stage": "19-git-history",
+      "summary": "Review the repository as a teaching artifact and add a git-history lesson that maps course milestones to the existing stage components, then update architecture documentation with a component-evolution timeline derived from the Component Assembly Map and preserve the current runnable contracts and deployment artifacts."
+    },
+    {
+      "boundary_change": "Git history becomes a visible teaching boundary, so milestones and checkouts are now part of the lesson itself.",
+      "components": {
+        "added": "`README.md` history-map guidance and the component-evolution timeline in `docs/architecture.md` for the git-history lesson.",
+        "replaced_or_evolved": "no application component is replaced; this stage reuses the current system and documents how earlier milestones can be viewed through tags and checkouts.",
+        "reused_unchanged": "`src/lambda_inventory.py`, `src/http_server.py`, `src/pick_ticket_worker.py`, `src/sqs_consumer.py`, `src/Dockerfile`, `src/web/index.html`, `src/web/app.js`, `src/web/style.css`, `docs/data-contracts.md`, `docs/end-to-end.md`, and the deployment guides under `deploy/`."
+      },
+      "continuity_checks": [
+        "README file-map paths must exist in the stage snapshot.",
+        "Inherited contracts remain stable unless this stage prompt explicitly changes them."
+      ],
+      "inherited_contract": "the inventory JSON, order JSON, pick-work command, OrderPlaced event, and pick-ticket output contracts remain valid and unchanged.",
+      "stage": "20-final-walkthrough",
+      "summary": "Install the preflighted final reference walkthrough."
+    }
+  ]
+}

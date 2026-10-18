@@ -1,0 +1,23 @@
+[
+  {
+    "sku": "SKU-1001",
+    "description": "Blue widget",
+    "bin_location": "A1-01",
+    "quantity": 24,
+    "unit": "each"
+  },
+  {
+    "sku": "SKU-1002",
+    "description": "Red widget",
+    "bin_location": "A1-02",
+    "quantity": 12,
+    "unit": "each"
+  },
+  {
+    "sku": "SKU-2001",
+    "description": "Packing tape roll",
+    "bin_location": "B2-04",
+    "quantity": 8,
+    "unit": "roll"
+  }
+]

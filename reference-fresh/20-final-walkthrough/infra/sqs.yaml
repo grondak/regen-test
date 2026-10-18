@@ -1,0 +1,15 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TinyWMS SQS lesson.
+Resources:
+  PickWorkQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: tinywms-pick-work
+
+Outputs:
+  QueueUrl:
+    Description: Queue URL for the pick-work command queue.
+    Value: !Ref PickWorkQueue
+  QueueArn:
+    Description: Queue ARN for the pick-work command queue.
+    Value: !GetAtt PickWorkQueue.Arn

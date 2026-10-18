@@ -1,0 +1,9 @@
+# TinyWMS pick-ticket worker environment
+# Copy this file and edit the values for your checkout.
+
+TINYWMS_REPO_ROOT=/path/to/tinywms
+TINYWMS_QUEUE_URL=
+TINYWMS_TICKET_FILE=/var/tmp/tinywms/pick-tickets.txt
+TINYWMS_STATE_FILE=/var/tmp/tinywms/pick-ticket-worker-state.json
+TINYWMS_WAIT_TIME_SECONDS=20
+TINYWMS_MAX_NUMBER_OF_MESSAGES=10

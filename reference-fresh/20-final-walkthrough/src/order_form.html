@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>TinyWMS Order</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    form { display: grid; gap: 0.75rem; max-width: 36rem; }
+    label { display: grid; gap: 0.25rem; }
+    input { padding: 0.4rem; }
+    button { width: fit-content; }
+    pre { background: #f5f5f5; padding: 1rem; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>TinyWMS order form</h1>
+  <p>This form submits a visible JSON order to the Lambda order handler.</p>
+  <form id="order-form">
+    <label>
+      Order ID
+      <input name="order_id" value="ORD-1001" autocomplete="off">
+    </label>
+    <label>
+      SKU
+      <input name="sku" value="SKU-1001" autocomplete="off">
+    </label>
+    <label>
+      Quantity
+      <input name="quantity" type="number" min="1" value="1">
+    </label>
+    <button type="submit">Submit order</button>
+  </form>
+  <h2>Request JSON</h2>
+  <pre id="request-json">{}</pre>
+  <h2>Response</h2>
+  <pre id="result">Awaiting submission...</pre>
+  <script>
+    const form = document.getElementById('order-form');
+    const requestJson = document.getElementById('request-json');
+    const result = document.getElementById('result');
+    const apiUrl = window.TINYWMS_ORDER_API_URL || '/orders';
+
+    function buildOrder() {
+      return {
+        order_id: form.order_id.value.trim(),
+        lines: [{
+          sku: form.sku.value.trim(),
+          quantity: Number(form.quantity.value),
+        }],
+      };
+    }
+
+    function refreshRequestPreview() {
+      requestJson.textContent = JSON.stringify(buildOrder(), null, 2);
+    }
+
+    form.addEventListener('input', refreshRequestPreview);
+    refreshRequestPreview();
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const payload = buildOrder();
+      requestJson.textContent = JSON.stringify(payload, null, 2);
+      result.textContent = 'Submitting order...';
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const text = await response.text();
+        result.textContent = `HTTP ${response.status}\n${text}`;
+      } catch (error) {
+        result.textContent = `Request failed: ${error.message}`;
+      }
+    });
+  </script>
+</body>
+</html>
