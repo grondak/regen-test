@@ -6,9 +6,23 @@
 **Demo (20 min):** walk one order through validation → insert → decrement → commit; deliberately fail another.
 
 ## Run sheet (verified)
-The real `place_order()` against a throwaway SQLite database, with in-memory stand-ins for SQS and EventBridge:
+*Demo scripts: set `TINYWMS` and `LESSONS` first (see README → Running the demos).*
+
+**Through the web page and curl (the transaction you can watch).** Start local mode, post orders, and read the tables:
 ```bash
-PYTHONPATH=.:../lessons/support python3 ../lessons/support/order_demo.py
+cd "$TINYWMS/20-final-walkthrough"
+bash deploy/local/run_local.sh --reset
+# second terminal, same folder:
+curl -s -w ' [%{http_code}]\n' -d '{"order_id":"ORD-1","lines":[{"sku":"SKU-1001","quantity":2},{"sku":"SKU-2001","quantity":1}]}' localhost:8000/orders
+curl -s -w ' [%{http_code}]\n' -d '{"order_id":"ORD-2","lines":[{"sku":"SKU-1002","quantity":1},{"sku":"SKU-2001","quantity":999}]}' localhost:8000/orders
+curl -s -w ' [%{http_code}]\n' -d '{"order_id":"ORD-1","lines":[{"sku":"SKU-1002","quantity":1}]}' localhost:8000/orders
+sqlite3 -header -column local-aws/tinywms.db "select * from inventory; select * from orders; select * from order_lines;"
+```
+The first is accepted (201), the second is rejected on its second line (409) and leaves SKU-1002 untouched, the third repeats an `order_id` and is rejected (409 `order already exists`). The tables show exactly one order and two lines.
+
+**The same thing as a script that prints the stock after each order.** The real `place_order()` against a throwaway SQLite database, with in-memory stand-ins for SQS and EventBridge:
+```bash
+PYTHONPATH=.:"$LESSONS/support" python3 "$LESSONS/support/order_demo.py"
 ```
 It places three orders and prints the stock after each:
 1. `ORD-1` buys SKU-1001 ×2 and SKU-2001 ×1. **Accepted**; both stock numbers drop; a row appears in `orders` and two in `order_lines`.
@@ -32,4 +46,5 @@ The schema (`data/schema.sql`) shows why order_lines has a composite primary key
 - Order matters: messages leave **after** the commit so a rolled-back order never sends a pick request.
 
 ## Caveat (feeds session 20)
-- The commit and the queue publish are two separate steps. If the database commits and then the SQS send fails (for instance a missing IAM permission), the order exists and nobody is told to pick it. The code has no retry or outbox for that.
+- The commit and the queue publish are two separate steps. If the database commits and then the SQS send fails (for instance a missing IAM permission), the order exists and nobody is told to pick it. The code has no retry or outbox for that. You can reproduce it on one machine; see session 20, bullet 6.
+- A repeated `order_id` is now rejected with 409 by the database's primary key on `orders`; the rollback undoes the stock changes.

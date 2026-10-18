@@ -1,0 +1,30 @@
+Written for: you, the instructor, as session notes to teach from.
+
+I made lessons/ at the repo root with 28 session files, an index (lessons/README.md) and six demo scripts in lessons/support/. I ran the local commands and scripts. I did not run anything that needs AWS, Postgres, Docker or systemd, because this machine has none of them. Those steps are marked "not run" in the files.
+
+How the sessions are built
+
+Sessions 4–6, 9, 13, 16–19, 21–25: these have a run sheet built from the repo's stages.
+Sessions 1, 7, 11, 12, 14, 15, 26: these mix run-sheet steps with manual steps (launch EC2, install a database, deploy AWS stacks).
+Sessions 2, 3, 8, 10, 20, 27, 28: the repo has nothing for these, so each is 10 bullets.
+Syllabus mapping: I ignored the two blank rows, treated the repeated "Whole 90 minutes" row as a duplicate of session 1, and made the last two rows sessions 27 and 28. Tell me if that's wrong.
+Demo scripts. Run these from 20-final-walkthrough/. They use the repo's real order and worker code with SQLite and an in-memory fake queue and event bus, so the order → queue → event → ticket path works with no AWS.
+
+order_demo.py shows accepted, rolled-back and unknown-SKU orders.
+race_demo.py shows two buyers overselling the last item, then the fix. The repo's own concurrency_demo.py only shows the fixed version, so this one shows the failure.
+events_demo.py contrasts the command with the event and adds subscribers.
+worker_demo.py runs the real worker with a duplicate delivery.
+inventory_query_demo.py runs GET /inventory through the handler against SQL rows.
+fake_aws.py is the shared fake queue and event bus.
+Bugs I found that will affect your teaching (all listed in lessons/README.md)
+
+Container: the Docker image can't start. The worker does from src.sqs_consumer import …, but the Dockerfile copies the files flat into /app. I reproduced the import error but didn't run Docker.
+Lambda GET /inventory: without an injected connection, the handler fails with an AttributeError in stages 10–20. The unit tests always inject one, so they pass. Stage 6's inline Lambda also opens a data file that isn't in the package.
+Event consumers: they print DetailType, but EventBridge delivers detail-type. I couldn't test this without AWS.
+Local order server: it rewrites its inventory file on every order, returns 409 for malformed input, and accepts duplicate order IDs.
+Docs:
+The worker step in deploy/aws/README.md passes a JSON file where the queue URL goes.
+Its curl example uses SKU-001, which isn't in the seed data.
+The stage 6 and API Gateway notes use different function names.
+Order flow: the commit and the queue send aren't atomic, so a failed send leaves an order with no pick request. Session 20 uses this as a teaching point.
+I didn't change any existing repo files. Do you want me to fix the container and Lambda bugs next, since they'd break live demos?

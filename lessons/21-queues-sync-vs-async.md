@@ -7,9 +7,29 @@
 
 ## Run sheet
 
-**Step 1: see what an accepted order puts on the queue (verified, offline).**
+*Demo scripts: set `TINYWMS` and `LESSONS` first (see README → Running the demos).*
+
+**Step 0: watch a real queue fill up, in local mode (verified).** Start the server *without* the worker, so nothing consumes the messages:
 ```bash
-PYTHONPATH=.:../lessons/support python3 ../lessons/support/order_demo.py
+cd "$TINYWMS/20-final-walkthrough"
+rm -rf local-aws && export TINYWMS_LOCAL=1
+python3 src/http_server.py                    # server only; open http://127.0.0.1:8000/ and submit an order
+# second terminal, same folder:
+ls local-aws/pick-work                         # one file per order line: the producer is done, the consumer has not started
+cat local-aws/pick-work/*.json                 # {"MessageId": ..., "Body": "<the pick-work command as a JSON string>"}
+```
+Then start the consumer and watch the queue drain and the ticket appear:
+```bash
+export TINYWMS_LOCAL=1
+python3 src/pick_ticket_worker.py local-aws/pick-work pick-tickets.txt --once --wait-time-seconds 1
+ls local-aws/pick-work                         # empty: delete-after-success is the acknowledgement
+cat pick-tickets.txt
+```
+The order finished before any ticket existed. That is the point of the lesson. (`bash deploy/local/run_local.sh` starts the worker for you, which hides this gap; use it for session 1, not here.)
+
+**Step 1: see what an accepted order puts on the queue (verified, offline script).**
+```bash
+PYTHONPATH=.:"$LESSONS/support" python3 "$LESSONS/support/order_demo.py"
 ```
 Look at the section "messages that would be in SQS". An order with two lines produces **two** messages, one per line:
 ```json

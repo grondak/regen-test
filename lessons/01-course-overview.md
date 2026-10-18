@@ -1,38 +1,43 @@
 # Session 1 — What is this course actually about?
 
-**Format:** whole 90 minutes · **Repo support:** Partly (the local half of the journey runs; the event and pick-ticket half needs AWS or the offline stand-ins)
+**Format:** whole 90 minutes · **Repo support:** Yes (the whole journey runs on one machine with `run_local.sh`; the AWS version is not run here)
 
 **Concept:** Pi → Linux → network → cloud → data → distributed system. Introduce TinyWMS and the no-tests / build-things model.
 **Demo:** the finished warehouse journey: inventory page → submit order → inventory changes → event → pick ticket appears. Show the Pi and AWS architecture without explaining all of it.
 
-## Run sheet: the journey, in three acts
+## Run sheet: the journey
 
-Prepare once, from the repo root:
-```bash
-cp 11-orders/data/inventory.json /tmp/inventory-demo.json      # the server rewrites its inventory file on every order
-```
+*Demo scripts: set `TINYWMS` and `LESSONS` first (see README → Running the demos).*
 
-**Act 1: inventory page and an order (real, local, about 5 min).**
+**The whole journey, one command (about 8 min).** No AWS, no setup beyond a checkout:
 ```bash
-cd 11-orders
-TINYWMS_INVENTORY_FILE=/tmp/inventory-demo.json python3 src/http_server.py
+cd "$TINYWMS/20-final-walkthrough"
+bash deploy/local/run_local.sh --reset
 # browser: http://127.0.0.1:8000/  -> table of 3 SKUs, textarea with order JSON, "Submit order"
-# submit it, watch the quantity drop; repeat in a terminal:
-curl -s localhost:8000/inventory
+# second terminal, before you submit:
+cd "$TINYWMS/20-final-walkthrough" && tail -F pick-tickets.txt
+```
+Submit the order in the page. In this order the audience sees:
+1. the inventory quantities drop (the page refreshes);
+2. one pick ticket line per order line appear in `pick-tickets.txt`, written by the worker process that `run_local.sh` started.
+
+That is the whole path: browser, order API (the same handler code Lambda runs), database, queue, worker, file. Ctrl+C in the first terminal stops everything.
+
+**Show the seams (optional, 3 min).** In a third terminal, still in `20-final-walkthrough/`:
+```bash
+sqlite3 -header -column local-aws/tinywms.db "select * from orders; select * from order_lines;"
+ls local-aws/event-consumer-a local-aws/event-consumer-b     # the OrderPlaced event, copied to both subscribers
+export TINYWMS_LOCAL=1
+python3 src/event_consumer_a.py local-aws/event-consumer-a   # consumer-a received OrderPlaced for <order>
+```
+In this local mode the SQLite file stands in for RDS and each folder under `local-aws/` stands in for an SQS queue or an EventBridge rule's target queue.
+
+**If you want to see the same order without the web server** (what is inside it, as three orders in a row: accepted, rolled back, unknown SKU):
+```bash
+PYTHONPATH=.:"$LESSONS/support" python3 "$LESSONS/support/order_demo.py"
 ```
 
-**Act 2: what the order really does in the cloud design (offline stand-ins, about 5 min).** The local server only edits a JSON file. The real design commits to a database, sends one SQS command per line, and publishes one event. This script runs the real order code against SQLite plus in-memory queue/bus:
-```bash
-cd 20-final-walkthrough
-PYTHONPATH=.:../lessons/support python3 ../lessons/support/order_demo.py
-```
-Point at the tail of the output: the rows in `orders` / `order_lines`, the pick-work messages, the `OrderPlaced` event.
-
-**Act 3: the pick ticket appears (offline, about 3 min).**
-```bash
-PYTHONPATH=.:../lessons/support python3 ../lessons/support/worker_demo.py
-```
-That feeds the real worker and prints `pick-tickets.txt`. If you have the AWS stack deployed (`20-final-walkthrough/deploy/aws/README.md`), do this part for real with `tail -f pick-tickets.txt`.
+**The real cloud version.** If you have the stack deployed (`20-final-walkthrough/deploy/aws/README.md`), run the same order against the API URL and `tail -f` the ticket file on the worker host. Not run for this plan.
 
 ## Talking points (10 bullets for the rest of the 90 minutes)
 1. The arc of the semester: a Raspberry Pi on the desk → Linux → HTTP → EC2 → serverless → SQL → orders → queues and events → a container. One small app, moved one boundary at a time.
@@ -47,5 +52,6 @@ That feeds the real worker and prints `pick-tickets.txt`. If you have the AWS st
 10. Close by promising the final session: students demonstrate their own working system and walk the final architecture beside this opening picture.
 
 ## Caveats found while preparing this
-- The local server (stages 03–20) never talks to a database, queue or event bus. Act 1 is honest about a file-backed demo; Acts 2 and 3 are what the cloud path does.
-- The server **rewrites its inventory file** on every accepted order, which is why the run sheet points it at a copy.
+- `bash deploy/local/run_local.sh` (stages 10–20) runs the real order code against SQLite with directories standing in for SQS and EventBridge. Plain `python3 src/http_server.py` is still the older file-backed server: it never touches a database, queue or event bus, and it rewrites `data/inventory.json` on every accepted order. Use `run_local.sh` for the demo.
+- The file queue is simpler than SQS: no visibility timeout and no duplicate deliveries.
+- Each run leaves `local-aws/` and `pick-tickets.txt` behind; `--reset` clears them.

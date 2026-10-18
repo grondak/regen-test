@@ -14,8 +14,10 @@ Icon?
 # generated artifacts
 /generated/
 /generated-forward/
+/generated-forward.*/
 /reference/
 __pycache__/
 .pytest_cache/
 .venv/
 *.pyc
+/reference-fresh/.*.json

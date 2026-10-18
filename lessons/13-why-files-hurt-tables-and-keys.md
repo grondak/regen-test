@@ -28,6 +28,6 @@ Compare the JSON object with the row: key → column, array of objects → rows,
 **Step 4 (optional): the generator.** `python3 src/sql_export.py data/inventory.json` prints INSERT statements built from the JSON; it builds SQL by pasting strings, so a description containing an apostrophe would break it. Use that as a one-line SQL-injection warning.
 
 ## Caveats
-- `python3 -m data.init_db` is not repeatable: a second run fails with `table inventory already exists`. `rm data/tinywms.db` first.
+- `python3 -m data.init_db` is not repeatable: a second run fails with `table inventory already exists`. `rm data/tinywms.db` first. (Local mode, `bash deploy/local/run_local.sh`, creates its database the first time it starts and `--reset` recreates it, so it avoids this.)
 - The stage-8 schema is a single table; the product/bin/warehouse split is a whiteboard exercise, not code in the repo.
 - Stage 8 gives you SQLite, a file. The "database is a server on a port" point is session 14.

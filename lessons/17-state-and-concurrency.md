@@ -6,10 +6,11 @@
 **Demo (20 min):** reproduce the naive read-then-update failure; demonstrate a transactional/conditional update.
 
 ## Run sheet
+*Demo scripts: set `TINYWMS` and `LESSONS` first (see README → Running the demos).*
 
 **Step 1: reproduce the bug (verified).** One hammer, two buyers, two threads with their own connections:
 ```bash
-python3 ../lessons/support/race_demo.py
+python3 "$LESSONS/support/race_demo.py"
 ```
 Expected output:
 ```

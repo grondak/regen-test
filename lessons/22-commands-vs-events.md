@@ -6,13 +6,27 @@
 **Demo (20 min):** contrast the pick-work command with the `OrderPlaced` event; add a second trivial subscriber or action.
 
 ## Run sheet (verified)
+*Demo scripts: set `TINYWMS` and `LESSONS` first (see README → Running the demos).*
 ```bash
-PYTHONPATH=.:../lessons/support python3 ../lessons/support/events_demo.py
+PYTHONPATH=.:"$LESSONS/support" python3 "$LESSONS/support/events_demo.py"
 ```
 It places one order and prints, side by side:
 - the **command**: `command_id`, `order_id`, `sku`, `description`, `quantity`, `bin` — specific, addressed to one worker, says what to do;
 - the **event**: `Source: tinywms.orders`, `DetailType: OrderPlaced`, and a `Detail` of `version`, `order_id`, `lines[sku, quantity]` — no bin, no instruction, just a fact about what happened;
 - then two subscribers (an audit logger and a customer-email stub) each handling the same event, with **no change** to the order code.
+
+**The same thing in local mode (verified).** Start the whole system, place an order, and look at the files:
+```bash
+cd "$TINYWMS/20-final-walkthrough"
+bash deploy/local/run_local.sh --reset        # open http://127.0.0.1:8000/ and submit an order
+# second terminal, same folder:
+ls local-aws/event-consumer-a local-aws/event-consumer-b     # the one OrderPlaced event, copied into each subscriber's queue
+cat local-aws/event-consumer-a/*.json                          # note: "detail-type": "OrderPlaced", "detail": {...} -- the shape EventBridge delivers
+export TINYWMS_LOCAL=1
+python3 src/event_consumer_a.py local-aws/event-consumer-a     # consumer-a received OrderPlaced for <order>
+python3 src/event_consumer_b.py local-aws/event-consumer-b     # consumer-b received OrderPlaced for <order>
+```
+Each consumer has its own queue, so one can be slow or broken without the other noticing. The pick-work command went to `local-aws/pick-work` and was consumed by the worker.
 
 **Make the second-subscriber point live.** Open `events_demo.py` and add a third function, e.g. one that prints "reserve packing materials when quantity > 5", and add it to the tuple at the bottom. The producer is untouched.
 
@@ -29,4 +43,5 @@ It places one order and prints, side by side:
 - Coupling: to add a subscriber you add a rule and a queue, not a line to the order code. To change the command you must change the order code and the worker together.
 
 ## Caveat to check on AWS
-- Both consumers print `event['DetailType']`, but a real EventBridge-to-SQS delivery names that field `detail-type` (lower case, hyphenated). The consumers decode `detail` correctly but may raise `KeyError` on the type. The offline demo uses the producer's own capitalised shape, so it hides this. Test on a real stack before relying on it.
+- The event consumers used to print `event['DetailType']`, but a real EventBridge-to-SQS delivery names that field `detail-type` (lower case, hyphenated). They now accept either, and the local event bus writes the real EventBridge shape, so the local demo exercises it. Whether a real deployed rule delivers exactly that shape has not been tested here; check once on a real stack.
+- The local bus copies each event to both subscribers unconditionally. In AWS the copying is done by the two rules in `infra/events.yaml`, which match on `detail-type`.

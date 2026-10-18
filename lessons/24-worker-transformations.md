@@ -6,6 +6,7 @@
 **Demo (20 min):** consume an order → look up or receive the bin → format a pick ticket → append to a file.
 
 ## Run sheet
+*Demo scripts: set `TINYWMS` and `LESSONS` first (see README → Running the demos).*
 
 **Step 1: the transformation in isolation (verified).**
 ```bash
@@ -21,14 +22,29 @@ The input is the command JSON; the output is one line: `command_id=... order_id=
 
 **Step 2: the whole worker, offline (verified).**
 ```bash
-PYTHONPATH=.:../lessons/support python3 ../lessons/support/worker_demo.py
+PYTHONPATH=.:"$LESSONS/support" python3 "$LESSONS/support/worker_demo.py"
 ```
 In a second terminal while it runs, or after it finishes: `cat` the ticket file it prints the path of. On the real worker use `tail -f pick-tickets.txt`.
+
+**Step 2b: the real worker against the local queue, the whole path (verified).**
+```bash
+cd "$TINYWMS/20-final-walkthrough"
+bash deploy/local/run_local.sh --reset         # starts the server AND the worker
+# second terminal, same folder:
+tail -F pick-tickets.txt
+# submit an order in the page at http://127.0.0.1:8000/ and watch the ticket lines appear
+```
+To run the worker on its own, in a third terminal (start the server without the worker first, e.g. `TINYWMS_LOCAL=1 python3 src/http_server.py`):
+```bash
+export TINYWMS_LOCAL=1
+python3 src/pick_ticket_worker.py local-aws/pick-work pick-tickets.txt --state-file local-aws/pick-ticket-worker-state.json --wait-time-seconds 2
+```
+`TINYWMS_LOCAL=1` is the only thing that changes where the queue is; the queue URL argument becomes a folder path.
 
 **Step 3: the real worker against a real queue (needs AWS credentials; not run for this plan).**
 ```bash
 PYTHONPATH=. python3 -m src.pick_ticket_worker "$PICK_WORK_QUEUE_URL" pick-tickets.txt --state-file pick-ticket-worker-state.json
-tail -f pick-tickets.txt          # second terminal
+tail -F pick-tickets.txt          # second terminal
 # place an order from the page or with curl (session 18/19) and watch tickets appear
 ```
 Use `--once` to poll one batch and exit; Ctrl+C or SIGTERM stops it between batches.
@@ -40,6 +56,6 @@ Use `--once` to poll one batch and exit; Ctrl+C or SIGTERM stops it between batc
 - Signals: the worker catches SIGINT and SIGTERM and finishes its current batch, which is what makes `systemctl stop` safe.
 
 ## Caveats
-- Run the worker with `-m src.pick_ticket_worker` or with `PYTHONPATH=.`. Running `python3 src/pick_ticket_worker.py` directly fails with `ModuleNotFoundError: No module named 'src'`, because the file imports `src.sqs_consumer`. The stage-20 runbook shows the failing form.
+- Both `python3 src/pick_ticket_worker.py ...` and `python3 -m src.pick_ticket_worker ...` work now (stages 15–20). The first draft of this lesson warned that the script form failed with `ModuleNotFoundError: No module named 'src'`; the import now falls back to the flat layout, which is also what the container uses.
 - `deploy/aws/README.md` step 6 (`python3 src/pick_ticket_worker.py data/pick-work.json pick-tickets.txt`) passes a JSON file where the queue URL goes; do not use it.
 - The sample command in `data/pick-work.json` uses `SKU-001`, which is not a seeded SKU (the seed has `SKU-1001`, `SKU-1002`, `SKU-2001`). An order for `SKU-001`, as in `deploy/aws/README.md`'s curl example, will be rejected as an unknown SKU.

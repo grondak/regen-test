@@ -23,7 +23,7 @@ The worker also needs AWS credentials to reach SQS. On EC2 attach a role (sessio
 ./deploy/pick-ticket-worker/install_user_service.sh      # renders the unit into ~/.config/systemd/user, then enable --now
 systemctl --user status tinywms-pick-ticket-worker.service
 journalctl --user -u tinywms-pick-ticket-worker.service -f      # the worker's stdout: ticket lines and message metadata
-tail -f /var/tmp/tinywms/pick-tickets.txt                       # the durable output file
+tail -F /var/tmp/tinywms/pick-tickets.txt                       # the durable output file
 ```
 Place an order from the browser (stack from sessions 12–16 deployed) and watch the ticket line appear in both places.
 
@@ -41,5 +41,22 @@ A user service stops when you log out unless lingering is enabled (`loginctl ena
 - A service is a process someone else supervises: start at boot, restart on crash, collect its output. systemd does for the worker what you did by hand with `&` and `tail -f` in session 4.
 - Logs vs files: the journal is for operators (what is the process doing); the ticket file is the product.
 
-## No AWS handy?
-Run the offline version of the same worker (`lessons/support/worker_demo.py`, session 24) and skip the systemd steps; or use systemd with the placeholder queue and show the worker failing and restarting.
+## No AWS handy? Run the service against the local queue
+The worker can read its messages from a folder instead of SQS, so the whole service demo works on a Pi with no AWS account and no credentials. The systemd steps are the same as above (not run for this plan, because this machine has no systemd); the only changes are the environment file and where the orders come from.
+
+1. In `~/.config/tinywms-pick-ticket-worker.env`, set the queue to the local folder and turn local mode on:
+```
+TINYWMS_LOCAL=1
+TINYWMS_QUEUE_URL=/home/pi/tinywms-course/20-final-walkthrough/local-aws/pick-work     # absolute path to the stage-20 checkout
+TINYWMS_TICKET_FILE=/var/tmp/tinywms/pick-tickets.txt
+TINYWMS_STATE_FILE=/var/tmp/tinywms/pick-ticket-worker-state.json
+```
+2. Install and start the service as in step 3.
+3. Run only the order API, **not** `run_local.sh` (that script starts its own worker, and two workers would split the messages):
+```bash
+cd "$TINYWMS/20-final-walkthrough"
+TINYWMS_LOCAL=1 python3 src/http_server.py
+```
+4. Submit an order in the browser and watch `tail -F /var/tmp/tinywms/pick-tickets.txt` and `journalctl --user -u tinywms-pick-ticket-worker.service -f`. Kill the worker with `pkill -f pick_ticket_worker` and show systemd restarting it five seconds later; messages that arrived meanwhile are waiting in the folder.
+
+The worker command that systemd runs, checked by hand with the same variables: `TINYWMS_LOCAL=1 python3 -m src.pick_ticket_worker local-aws/pick-work /tmp/pick-tickets.txt --state-file /tmp/state.json --once --wait-time-seconds 1`.

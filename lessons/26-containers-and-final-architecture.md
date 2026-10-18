@@ -1,20 +1,39 @@
 # Session 26 — Containers, then responsibility boundaries across the whole system
 
-**Stage:** `17-container-worker` · **Repo support:** Yes for the files; **the container as shipped does not start** (see the first caveat) · **Run from:** `20-final-walkthrough/`
+**Stage:** `17-container-worker` · **Repo support:** Yes (the Dockerfile bugs are fixed; the image has not been built here because Docker was unavailable) · **Run from:** `20-final-walkthrough/`
 
 **Concept (20 min):** a container is a packaged process environment: image, container, filesystem, environment, port, volume; then responsibility boundaries.
 **Demo (20 min):** containerize the pick worker, run it, feed it the same message, preserve its output; draw the final architecture beside the Session 1 version.
 
-## Check this first
-`src/Dockerfile` copies `pick_ticket_worker.py` and `sqs_consumer.py` into a flat `/app` directory, but the worker begins with `from src.sqs_consumer import consume_messages`. Inside the image there is no `src` package, so the container exits at once with `ModuleNotFoundError: No module named 'src'`. I reproduced the same import error by copying just those two files into a clean directory; I did not run Docker. Two fixes; pick one before class:
-- change the import to `from sqs_consumer import consume_messages` when running in the container, or
-- keep the package layout: `COPY src/ /app/src/`, `WORKDIR /app`, `ENTRYPOINT ["python3", "-m", "src.pick_ticket_worker"]`.
+## Status of the Dockerfile (updated)
+Two bugs were found in the first draft of this lesson, and both are fixed in the code (stages 17–20). **The image has still not been built or run**: the Docker daemon was not reachable when this was checked, so treat the first `docker build` as a rehearsal item.
+- The worker's import (`from src.sqs_consumer import ...`) failed in the flat `/app` layout. It now falls back to `from sqs_consumer import ...`. I confirmed that by copying only the files the image contains into an empty folder and running the worker there.
+- The `COPY` lines assumed the build context was `src/`, but the documented command (`docker build -f src/Dockerfile -t tinywms-pick-ticket-worker .`) uses the stage root. They now read `COPY src/...`, and the image also gets `local_aws.py`, which lets the container read the local queue folder.
 
-## Run sheet (once the import is fixed)
+## Run sheet
+*Demo scripts: set `TINYWMS` and `LESSONS` first (see README → Running the demos).*
+
 ```bash
+cd "$TINYWMS/20-final-walkthrough"
 docker build -f src/Dockerfile -t tinywms-pick-ticket-worker .
 ```
-Run it with the ticket ledger and the idempotency state on a volume, so they survive the container (the form from the stage-20 runbook, which is the better one because it mounts a directory):
+
+**Offline version (no AWS): feed the container from the local queue folder.** The folder `local-aws/` is shared with the container as a volume, so the queue, the tickets and the idempotency state all live on the host:
+```bash
+rm -rf local-aws pick-tickets.txt && export TINYWMS_LOCAL=1
+python3 src/http_server.py &                                   # server only; no worker
+sleep 1
+curl -s -d '{"order_id":"C-1","lines":[{"sku":"SKU-1001","quantity":2}]}' localhost:8000/orders
+ls local-aws/pick-work                                          # the message waiting for a consumer
+docker run --rm -e TINYWMS_LOCAL=1 -v "$PWD/local-aws:/state" tinywms-pick-ticket-worker \
+  /state/pick-work /state/pick-tickets.txt --state-file /state/pick-ticket-worker-state.json --once --wait-time-seconds 1
+cat local-aws/pick-tickets.txt                                  # the ticket, written inside the container, kept on the host
+ls local-aws/pick-work                                          # empty: the container acknowledged the message
+kill %1
+```
+Run the same `docker run` again after posting another order: the first ticket is still there, because the volume outlived the container. Remove the volume mount and the ticket vanishes with the container; that is the image/container/volume distinction in one demo. (Not run for this plan: Docker was unavailable.)
+
+**Against real SQS.** Run it with the ticket ledger and the idempotency state on a volume, so they survive the container (the form from the stage-20 runbook, which is the better one because it mounts a directory):
 ```bash
 mkdir -p data
 docker run --rm \
